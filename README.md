@@ -19,7 +19,7 @@ OmaMullvad supports the Omarchy 4.0.3+ stock bar. Replacement bars that do not e
 ## Install
 
 ```bash
-omarchy plugin add https://github.com/HalmyLyseas/oma-mullvad.git --enable
+omarchy plugin add https://github.com/HalmyLyseas/omarchy-mullvad.git --enable
 ```
 
 OmaMullvad targets Mullvad VPN 2026.4. Install and enable Mullvad VPN separately before using the controls.

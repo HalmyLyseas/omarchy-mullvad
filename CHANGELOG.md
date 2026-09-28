@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Rename the fork repository to `omarchy-mullvad` to match the other Omarchy plugins; keep the existing plugin ID so installed settings and keybindings remain valid.
+
 ## 1.5.0
 
 - Adopt `halmylyseas.oma-mullvad` as the maintained fork identity and `HalmyLyseas` as manifest author; retain original MIT attribution.
