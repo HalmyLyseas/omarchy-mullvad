@@ -6,8 +6,11 @@
 - Replace the static 1:110m map with 1:50m land and borders, wheel zoom, drag panning, and an animated move to selected relay cities.
 - Keep map data bundled and offline, with a larger Connection map and fixed-size relay markers.
 - Consolidate locations into the Connection tab, compact Advanced DNS controls, and target only Omarchy 4.0.4 in CI.
+- Keep the Connection layout stable during tunnel changes, remove redundant action feedback, and smooth map flights between distant cities.
+- Route logged-out users to System, lock the other tabs, and reject tunnel connect or toggle until login.
+- Keep disconnect available after logout, show account errors on System, and distinguish unknown account status from a confirmed logout.
+- Refresh the panel previews and add an animated map demonstration.
 - Rename the fork repository to `omarchy-mullvad-vpn`, display it as Mullvad VPN, and use plugin ID `halmylyseas.mullvad-vpn`.
-- Document the manual settings and keybinding switch from the earlier fork and upstream plugin IDs.
 
 ## 1.5.0
 

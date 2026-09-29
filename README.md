@@ -1,6 +1,12 @@
 # Mullvad VPN
 
-![Mullvad VPN preview](preview.gif)
+## Preview
+
+| Connection panel | Animated map movement |
+| --- | --- |
+| ![Mullvad VPN panel](preview.gif) | ![Map moving between relay cities](assets/dynamic-map.webp) |
+
+[Static panel preview](preview.png)
 
 Mullvad VPN controls for the Omarchy Quattro bar.
 
@@ -22,37 +28,23 @@ The plugin targets the Omarchy 4.0.4 stock bar. Replacement bars that do not exp
 omarchy plugin add https://github.com/HalmyLyseas/omarchy-mullvad-vpn.git --enable
 ```
 
-This plugin targets Mullvad VPN 2026.4. Install and enable Mullvad VPN separately before using the controls.
-
-## Upgrading from an earlier identity
-
-The plugin ID is now `halmylyseas.mullvad-vpn`. Installations under the earlier fork IDs `halmylyseas.omarchy-mullvad` and `halmylyseas.oma-mullvad`, or the upstream ID `io.github.kallupx.oma-mullvad`, do not migrate automatically. Back up `~/.config/omarchy/shell.json` before switching, preserve the old widget's favourites, recent items and refresh interval, and disable the old widget before enabling this one. Update custom IPC keybindings to the new ID.
+The plugin has been validated with the Mullvad VPN 2026.4 CLI. Other versions are not blocked; the panel warns when a CLI version is untested. Install and enable Mullvad VPN separately before using the controls.
 
 ## Controls
 
 - Left-click: open the panel
-- Right-click: connect or disconnect
+- Right-click: connect or disconnect while logged in
 - Middle-click: refresh
 
-The panel has Connection, Advanced, Excluded, and System tabs. It is keyboard-accessible (1–4 select tabs). Connection and System remain available when the Mullvad CLI or daemon is unavailable. Account controls on System require a working CLI and daemon; its package and update diagnostics remain read-only.
+The panel has Connection, Advanced, Excluded, and System tabs. It is keyboard-accessible (1–4 select tabs). When the CLI or daemon is unavailable, Connection and System remain available for status and diagnostics. A confirmed logout limits the panel to System; log in there to unlock the other tabs. If a tunnel is still active, System offers a Disconnect button. Account controls require a working CLI and daemon. Package diagnostics are read-only, and the update check does not install updates.
 
 On Connection, search for an exit city or select an eligible marker on the map. Favourites and recent cities are one-click choices; selecting a city connects or reconnects as needed. The selected relay card lets you save a favourite or choose a specific server. Relay filters are behind the Filters button. The panel grows to fit Connection's default content when screen space allows; expanded filters and shorter screens can still scroll. Scroll over the map to zoom, drag to pan, and use its controls to zoom or reset. Choosing a city moves the map there with a brief zoom-out, pan, and zoom-in animation. The map stays offline and limits zoom to regional detail. Connection policy and a compact two-column DNS blocking grid are on Advanced; account login and logout are on System.
 
 ## Known limitations
 
-Tailscale's netfilter rules can interfere with Mullvad's Linux split-tunnelling marks. On affected systems, including the combination of Tailscale 1.102.3 and Mullvad 2026.4, an application appears in the excluded-process list but public connections time out. This is tracked upstream in [tailscale/tailscale#19787](https://github.com/tailscale/tailscale/issues/19787).
+Tailscale's netfilter rules can interfere with Mullvad's Linux packet marks used for split tunnelling. If excluded applications appear in the list but their connections time out, check the local firewall rules and the related [Tailscale packet-mark issue](https://github.com/tailscale/tailscale/issues/19787). The issue reports a conflict beginning with Tailscale 1.98.x; it does not establish a Mullvad CLI version requirement.
 
 Do not disable Tailscale netfilter without providing equivalent firewall and tailnet-routing rules. The plugin does not alter Tailscale or system firewall configuration.
-
-## Hotkeys
-
-The plugin does not add keybindings automatically. Example `~/.config/hypr/bindings.lua` entries:
-
-```lua
-o.bind("SUPER + SHIFT + V", "Toggle Mullvad", "omarchy-shell halmylyseas.mullvad-vpn toggleTunnel")
-o.bind("SUPER + ALT + V", "Next Mullvad favourite", "omarchy-shell halmylyseas.mullvad-vpn nextFavorite")
-o.bind("SUPER + SHIFT + ALT + V", "Mullvad VPN panel", "omarchy-shell halmylyseas.mullvad-vpn toggle")
-```
 
 ## Uninstall
 

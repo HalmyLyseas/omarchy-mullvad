@@ -24,6 +24,7 @@ BarWidget {
   readonly property string barTooltip: !svc ? "Mullvad controls unavailable in this bar"
     : !svc.installed ? "Mullvad CLI is not installed"
     : !svc.daemonRunning ? "Mullvad daemon is unavailable"
+    : svc.accountKnown && !svc.loggedIn && !svc.active ? "Log in to Mullvad on the System tab"
     : stateIcon === "error" ? "Mullvad tunnel error"
     : stateIcon === "warning" ? (svc.state === "blocked" ? "Mullvad is blocking network traffic"
       : svc.tunnelDropWarning ? "Mullvad tunnel dropped unexpectedly"
@@ -98,7 +99,10 @@ BarWidget {
     }
     onPressed: function(buttonCode) {
       if (buttonCode === Qt.RightButton) {
-        if (root.svc && root.svc.installed && root.svc.daemonRunning) root.svc.toggleTunnel()
+        if (root.svc && root.svc.installed && root.svc.daemonRunning) {
+          if (root.svc.accountKnown && !root.svc.loggedIn && !root.svc.active) root.open()
+          else root.svc.toggleTunnel()
+        }
       }
       else if (buttonCode === Qt.MiddleButton) { if (root.svc) root.svc.refreshAll() }
       else root.toggle()

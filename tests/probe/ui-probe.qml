@@ -116,9 +116,19 @@ ShellRoot {
       Qt.callLater(function() {
         var label = root.findNamed(feedbackPanel._probePageItem, "overviewActionStatus")
         if (!label) { root.finish("Connection action feedback is missing"); return }
+        var redundantHidden = true
+        var connectionMessages = ["Selecting location…", "Selecting location complete",
+          "Connecting…", "Connecting complete", "Reconnecting…", "Reconnecting complete",
+          "Disconnecting…", "Disconnecting complete"]
+        for (var i = 0; i < connectionMessages.length; i++) {
+          service.actionStatus = connectionMessages[i]
+          if (label.visible) redundantHidden = false
+        }
+        service.actionStatus = "Updating lockdown…"
         var message = label.text
         service.lastError = service.actionStatus
-        root.finish("", { message: message, duplicateHidden: !label.visible,
+        root.finish("", { message: message, redundantHidden: redundantHidden,
+          duplicateHidden: !label.visible,
           plainText: label.textFormat === Text.PlainText })
       })
     } else if (scenario === "state-icons") {

@@ -30,7 +30,8 @@ function methods(file, indent, values = {}) {
 function serviceContext() {
     return methods("Service.qml", 2, {
         installed: true, daemonRunning: false, connected: false, state: "unavailable",
-        lastError: "", actionStatus: "", locations: [], _pendingStatusSeq: 2,
+        lastError: "", actionStatus: "", locations: [], accountKnown: false,
+        _accountRevision: 0, _pendingAccountRevision: 0, _pendingStatusSeq: 2,
         _statusApplySeq: 0, _statusSeq: 2, _listenerOverflowed: false, listenerProcess: { running: false },
         listenerRestart: { stop() {} }
     });
@@ -59,6 +60,131 @@ test("successful status polls reject malformed payloads before claiming readines
         assert.equal(service.disconnectingAction, action);
         assert.equal(service.daemonRunning, true);
     }
+});
+
+test("CLI or daemon loss clears stale account information", () => {
+    for (const unavailable of ["probe", "status"]) {
+        const service = serviceContext();
+        service.loggedIn = true;
+        service.accountExpiry = "2027-02-17";
+        service.accountDaysRemaining = 140;
+        service._applyRead(unavailable, "", "unavailable", 1);
+        assert.equal(service.loggedIn, false, unavailable);
+        assert.equal(service.accountExpiry, "", unavailable);
+        assert.equal(service.accountDaysRemaining, -1, unavailable);
+    }
+});
+
+test("logged-out account cannot start or toggle a tunnel", () => {
+    const service = serviceContext();
+    service.daemonRunning = true;
+    service.busy = false;
+    service.loggedIn = false;
+    service.accountKnown = true;
+    service.active = false;
+    service.relayConstraints = { location: {}, providers: [], ownership: "any", ipVersion: "any" };
+    let actions = 0;
+    service._relayAvailable = () => true;
+    service._runAction = () => { actions++; return true; };
+    service.connectTunnel();
+    service.toggleTunnel();
+    assert.equal(actions, 0);
+    assert.match(service.lastError, /Log in to Mullvad/);
+    service.loggedIn = true;
+    service.connectTunnel();
+    assert.equal(actions, 1);
+});
+
+test("an active tunnel can still be disconnected after logout", () => {
+    const service = serviceContext();
+    service.daemonRunning = true;
+    service.busy = false;
+    service.accountKnown = true;
+    service.loggedIn = false;
+    service.active = true;
+    let disconnects = 0;
+    service.disconnectTunnel = () => { disconnects++; };
+    service.toggleTunnel();
+    assert.equal(disconnects, 1);
+});
+
+test("failed or unfamiliar account reads preserve the last confirmed account state", () => {
+    const service = serviceContext();
+    service.accountKnown = true;
+    service.loggedIn = true;
+    service.accountExpiry = "2027-02-17";
+    for (const [raw, error, code] of [["", "timed out", 124], ["", "output limit exceeded", 137],
+        ["new CLI output format", "", 0]]) {
+        service._applyRead("account", raw, error, code);
+        assert.equal(service.accountKnown, true);
+        assert.equal(service.loggedIn, true);
+        assert.equal(service.accountExpiry, "2027-02-17");
+    }
+});
+
+test("a pre-logout account read cannot restore stale login state", () => {
+    const service = serviceContext();
+    service.accountKnown = true;
+    service.loggedIn = false;
+    service._pendingAccountRevision = 0;
+    service._accountRevision = 1;
+    service._applyRead("account", "Expires at: 2027-02-17 21:51:25 +01:00", "", 0);
+    assert.equal(service.loggedIn, false);
+});
+
+test("successful account actions invalidate old reads and apply the new account state", () => {
+    for (const [label, expectedLogin] of [["Logging out", false], ["Logging in", true]]) {
+        const service = serviceContext();
+        service.loggedIn = !expectedLogin;
+        service.accountKnown = true;
+        service.actionProcess = { label, secret: "", quiet: false };
+        service.actionWatchdog = { stop() {} };
+        service.actionKillTimer = { stop() {} };
+        service.actionStatusTimer = { restart() {} };
+        service._flushOutputRemainders = () => {};
+        service._actionLines = [];
+        service._actionErrorLines = [];
+        service._actionQueue = [];
+        service.refreshAll = () => {};
+        service.Qt = { callLater() {} };
+        service._finalizeAction(0, 0, "");
+        assert.equal(service.accountKnown, true, label);
+        assert.equal(service.loggedIn, expectedLogin, label);
+        assert.equal(service._accountRevision, 1, label);
+    }
+});
+
+test("favourite relay selection cannot queue a connect while logged out", () => {
+    const service = serviceContext();
+    service.busy = false;
+    service.daemonRunning = true;
+    service.accountKnown = true;
+    service.loggedIn = false;
+    service.active = false;
+    service.relayConstraints = { location: {}, providers: [], ownership: "any", ipVersion: "any" };
+    service.locations = [{ countryCode: "us", code: "nyc", servers: [{ hostname: "us-nyc-wg-001", ownership: "owned", provider: "Example", ips: ["192.0.2.1"] }] }];
+    const actions = [];
+    service._enqueueAction = command => { actions.push(plain(command)); return true; };
+    assert.equal(service.selectLocation("us", "nyc", true), false);
+    assert.deepEqual(actions, []);
+    assert.match(service.lastError, /Log in to Mullvad/);
+    assert.equal(service._command("connect", {}), null);
+    assert.equal(service._command("reconnect", {}), null);
+});
+
+test("tab availability distinguishes unknown account state from confirmed logout", () => {
+    const panel = methods("Panel.qml", 2, {
+        cliReady: true, accountRequired: false, service: { loggedIn: false }
+    });
+    for (const page of [0, 1, 2, 3]) assert.equal(panel.pageAvailable(page), true);
+    panel.accountRequired = true;
+    for (const page of [0, 1, 2]) assert.equal(panel.pageAvailable(page), false);
+    assert.equal(panel.pageAvailable(3), true);
+    panel.cliReady = false;
+    panel.accountRequired = false;
+    assert.equal(panel.pageAvailable(0), true);
+    assert.equal(panel.pageAvailable(1), false);
+    assert.equal(panel.pageAvailable(3), true);
 });
 
 test("stale malformed and failed polls cannot disturb newer listener truth", () => {
@@ -140,7 +266,7 @@ test("daemon-down service actions reject centrally while read probes remain usab
     service._enqueueRead = (kind, argv) => reads.push([kind, plain(argv)]);
     service.packageInfoScript = "/mock/package-info";
     service.refreshAll();
-    assert.deepEqual(reads, [["packageInfo", ["/mock/package-info"]], ["probe", ["/usr/bin/env", "mullvad", "--version"]]]);
+    assert.deepEqual(reads, [["packageInfo", ["/mock/package-info"]], ["probe", ["mullvad", "--version"]]]);
     service.daemonRunning = true;
     service.setLockdown(true);
     assert.deepEqual(commands, [["mullvad", "lockdown-mode", "set", "on"]]);
@@ -155,7 +281,7 @@ test("status refresh re-probes CLI installation when either readiness flag is fa
         service.daemonRunning = daemonRunning;
         service._enqueueRead = (kind, command) => reads.push(kind);
         service.refreshStatus();
-        assert.deepEqual(reads, installed && daemonRunning ? ["status", "daemonPid"] : ["packageInfo", "probe"]);
+        assert.deepEqual(reads, installed && daemonRunning ? ["status", "account", "daemonPid"] : ["packageInfo", "probe"]);
     }
 });
 

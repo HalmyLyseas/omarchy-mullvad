@@ -541,7 +541,7 @@ function parseRelayConstraints(raw) {
 function parseAccount(raw, nowMs) {
     var safe = redact(boundedInput(raw, 32768));
     if (/not logged in|no account|logged out/i.test(safe))
-        return { loggedIn: false, expiresAt: "", expiryMs: 0, daysRemaining: null, deviceName: "" };
+        return { known: true, loggedIn: false, expiresAt: "", expiryMs: 0, daysRemaining: null, deviceName: "" };
     var expiry = safe.match(/^\s*Expires at:\s*(.+?)\s*$/im);
     var device = safe.match(/^\s*Device name:\s*(.+?)\s*$/im);
     var expiryText = expiry ? plainText(expiry[1], 128) : "";
@@ -549,6 +549,7 @@ function parseAccount(raw, nowMs) {
     var expiryMs = expiryText ? Date.parse(iso) : NaN;
     var loggedIn = !!(expiry || device || /Mullvad account:/i.test(safe));
     return {
+        known: loggedIn,
         loggedIn: loggedIn,
         expiresAt: expiryText,
         expiryMs: isNaN(expiryMs) ? 0 : expiryMs,

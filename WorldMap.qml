@@ -19,11 +19,14 @@ Item {
   readonly property real mapScale: baseScale * zoomLevel
   property var hoveredLocation: null
   property bool cameraReady: false
-  property real flightMidX: 500
-  property real flightMidY: 250
+  property real flightStartX: 500
+  property real flightStartY: 250
+  property real flightStartZoom: 1
   property real flightTargetX: 500
   property real flightTargetY: 250
   property real flightMidZoom: 1
+  property real flightProgress: 0
+  property int flightDuration: 1100
 
   signal locationSelected(var location)
 
@@ -84,12 +87,33 @@ Item {
   function flyTo(point) {
     if (!validPoint(point) || !mapScale) return
     flight.stop()
-    flightMidZoom = Math.min(zoomLevel, 1.25)
-    flightMidX = limitX(centerX, flightMidZoom)
-    flightMidY = limitY(centerY, flightMidZoom)
+    flightStartX = centerX
+    flightStartY = centerY
+    flightStartZoom = zoomLevel
     flightTargetX = limitX(pointX(point), focusZoom)
     flightTargetY = limitY(pointY(point), focusZoom)
+    var dx = flightTargetX - flightStartX
+    var dy = flightTargetY - flightStartY
+    var distance = Math.sqrt(dx * dx + dy * dy)
+    flightMidZoom = Math.min(zoomLevel, distance > 100 ? 2.1 : distance > 35 ? 3.6 : 4.8)
+    flightDuration = Math.round(Math.max(1100, Math.min(1850, 1050 + distance * 3)))
+    flightProgress = 0
     flight.start()
+  }
+
+  function applyFlightProgress() {
+    var t = flightProgress
+    if (flightStartZoom <= flightMidZoom + 0.1) {
+      zoomLevel = flightStartZoom + (focusZoom - flightStartZoom) * t
+    } else if (t < 0.5) {
+      var out = (1 - Math.cos(Math.PI * t * 2)) / 2
+      zoomLevel = flightStartZoom + (flightMidZoom - flightStartZoom) * out
+    } else {
+      var into = (1 - Math.cos(Math.PI * (t * 2 - 1))) / 2
+      zoomLevel = flightMidZoom + (focusZoom - flightMidZoom) * into
+    }
+    centerX = limitX(flightStartX + (flightTargetX - flightStartX) * t, zoomLevel)
+    centerY = limitY(flightStartY + (flightTargetY - flightStartY) * t, zoomLevel)
   }
 
   function _probeMarkerHitTarget(index) {
@@ -98,6 +122,7 @@ Item {
   }
 
   onSelectedPointChanged: if (cameraReady) flyTo(selectedPoint)
+  onFlightProgressChanged: applyFlightProgress()
   onWidthChanged: if (cameraReady) { centerX = limitX(centerX, zoomLevel); centerY = limitY(centerY, zoomLevel) }
   onHeightChanged: if (cameraReady) { centerX = limitX(centerX, zoomLevel); centerY = limitY(centerY, zoomLevel) }
   Component.onCompleted: {
@@ -111,22 +136,14 @@ Item {
 
   clip: true
 
-  SequentialAnimation {
+  NumberAnimation {
     id: flight
-    ParallelAnimation {
-      NumberAnimation { target: root; property: "zoomLevel"; to: root.flightMidZoom; duration: 280; easing.type: Easing.InOutCubic }
-      NumberAnimation { target: root; property: "centerX"; to: root.flightMidX; duration: 280; easing.type: Easing.InOutCubic }
-      NumberAnimation { target: root; property: "centerY"; to: root.flightMidY; duration: 280; easing.type: Easing.InOutCubic }
-    }
-    ParallelAnimation {
-      NumberAnimation { target: root; property: "centerX"; to: root.limitX(root.flightTargetX, root.flightMidZoom); duration: 460; easing.type: Easing.InOutCubic }
-      NumberAnimation { target: root; property: "centerY"; to: root.limitY(root.flightTargetY, root.flightMidZoom); duration: 460; easing.type: Easing.InOutCubic }
-    }
-    ParallelAnimation {
-      NumberAnimation { target: root; property: "zoomLevel"; to: root.focusZoom; duration: 320; easing.type: Easing.InOutCubic }
-      NumberAnimation { target: root; property: "centerX"; to: root.flightTargetX; duration: 320; easing.type: Easing.InOutCubic }
-      NumberAnimation { target: root; property: "centerY"; to: root.flightTargetY; duration: 320; easing.type: Easing.InOutCubic }
-    }
+    target: root
+    property: "flightProgress"
+    from: 0
+    to: 1
+    duration: root.flightDuration
+    easing.type: Easing.InOutSine
   }
 
   Item {

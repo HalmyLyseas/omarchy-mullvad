@@ -48,8 +48,17 @@ Item {
     property string actionStatus: ""
     property bool cliVersionSupported: true
     property string cliVersion: "2026.4"
+    property string daemonVersion: ""
+    property var daemonSupported: null
+    property string suggestedUpgrade: ""
+    property int daemonPid: 0
+    property var packages: []
+    property var updateResults: []
+    property string updateCheckStatus: "never"
+    property double updateCheckedAt: 0
     property bool tunnelDropWarning: false
     property bool loggedIn: false
+    property bool accountKnown: false
     property int accountDaysRemaining: -1
     property string accountExpiry: ""
     property bool lockdown: false
@@ -62,6 +71,7 @@ Item {
     property var antiCensorship: ({ mode: "auto" })
     property var excludedProcesses: []
     property int toggleCount: 0
+    property int disconnectCount: 0
     property int refreshCount: 0
     property int selectCount: 0
     property string selectedCountry: ""
@@ -74,6 +84,7 @@ Item {
     function refreshAll() { refreshCount++ }
     function refreshExcluded() {}
     function toggleTunnel() { toggleCount++ }
+    function disconnectTunnel() { disconnectCount++ }
     function selectLocation(countryCode, cityCode, reconnect, hostname) {
       selectCount++
       selectedCountry = countryCode
@@ -162,6 +173,16 @@ Item {
       confirmSpy.target = null
       mapSpy.target = null
       fakeService.excludedProcesses = []
+      fakeService.installed = true
+      fakeService.daemonRunning = true
+      fakeService.loggedIn = true
+      fakeService.accountKnown = true
+      fakeService.active = false
+      fakeService.disconnectCount = 0
+      fakeService.cliVersion = "2026.4"
+      fakeService.cliVersionSupported = true
+      fakeService.lastError = ""
+      fakeService.statusText = "Disconnected"
       DesktopEntries.applications.values = []
       fakeService.dnsInput = null
       fakeService.dnsDefaultFlags = null
@@ -194,6 +215,135 @@ Item {
         if (found) return found
       }
       return null
+    }
+
+    function findNamedItem(item, name) {
+      if (!item) return null
+      if (item.objectName === name) return item
+      var children = item.children || []
+      for (var i = 0; i < children.length; i++) {
+        var found = findNamedItem(children[i], name)
+        if (found) return found
+      }
+      return null
+    }
+
+    function test_connection_exit_row_keeps_its_height_during_switching() {
+      var panel = createTemporaryObject(panelComponent, scene)
+      verify(panel !== null)
+      var page = panel._probePageItem
+      var exitRow = findNamedItem(page, "exitNodeInfo")
+      verify(exitRow !== null)
+      verify(exitRow.visible)
+      verify(exitRow.height > 0)
+      compare(exitRow.text, "")
+      var pageHeight = page.implicitHeight
+      fakeService.city = "Paris"
+      fakeService.country = "France"
+      fakeService.ip = "192.0.2.1"
+      fakeService.connected = true
+      verify(exitRow.text.indexOf("Exit: Paris") === 0)
+      compare(page.implicitHeight, pageHeight)
+      fakeService.connected = false
+      compare(exitRow.text, "")
+      compare(page.implicitHeight, pageHeight)
+    }
+
+    function test_system_hides_stale_account_actions_without_cli() {
+      fakeService.installed = false
+      fakeService.daemonRunning = false
+      fakeService.loggedIn = true
+      fakeService.accountExpiry = "2027-02-17"
+      var panel = createTemporaryObject(panelComponent, scene)
+      verify(panel !== null)
+      panel.showPage(3)
+      var page = panel._probePageItem
+      var unavailable = findTextItem(page, "Account status unavailable while Mullvad is not installed.")
+      var logout = findTextItem(page, "Logout")
+      var updateCheck = findTextItem(page, "Check now")
+      verify(unavailable !== null && unavailable.visible)
+      verify(logout !== null)
+      verify(!logout.parent.visible)
+      verify(!logout.enabled)
+      verify(updateCheck !== null && !updateCheck.enabled && updateCheck.opacity < 0.5)
+    }
+
+    function test_missing_cli_guidance_does_not_require_a_specific_version() {
+      fakeService.installed = false
+      fakeService.daemonRunning = false
+      fakeService.lastError = "Mullvad CLI not found. Install Mullvad VPN, then refresh."
+      var panel = createTemporaryObject(panelComponent, scene)
+      verify(panel !== null)
+      var page = panel._probePageItem
+      var hero = findNamedItem(page, "overviewHero")
+      var duplicate = findTextItem(page, fakeService.lastError)
+      verify(hero !== null)
+      compare(hero.meta, "Mullvad is not installed")
+      verify(duplicate !== null && !duplicate.visible)
+      fakeService.installed = true
+      fakeService.daemonRunning = true
+      fakeService.loggedIn = true
+      fakeService.cliVersion = "2027.1"
+      fakeService.cliVersionSupported = false
+      fakeService.lastError = ""
+      verify(panel.pageAvailable(1))
+      var warning = findTextItem(page,
+        "Mullvad CLI 2027.1 is untested with this plugin; some settings may display incorrectly.")
+      verify(warning !== null && warning.visible)
+    }
+
+    function test_logged_out_account_routes_to_system_and_locks_other_tabs() {
+      var panel = createTemporaryObject(panelComponent, scene)
+      verify(panel !== null)
+      compare(panel.pageIndex, 0)
+      fakeService.loggedIn = false
+      compare(panel.pageIndex, 3)
+      for (var index = 0; index < 3; index++) {
+        verify(!panel.pageAvailable(index))
+        panel.showPage(index)
+        compare(panel.pageIndex, 3)
+      }
+      verify(panel.pageAvailable(3))
+      panel.handleTextKey("1")
+      compare(panel.pageIndex, 3)
+      panel.movePage(1)
+      compare(panel.pageIndex, 3)
+      fakeService.loggedIn = true
+      verify(panel.pageAvailable(0))
+      panel.showPage(0)
+      compare(panel.pageIndex, 0)
+    }
+
+    function test_unknown_account_does_not_bounce_tabs_during_daemon_recovery() {
+      fakeService.daemonRunning = false
+      fakeService.accountKnown = false
+      fakeService.loggedIn = false
+      var panel = createTemporaryObject(panelComponent, scene)
+      verify(panel !== null)
+      compare(panel.pageIndex, 0)
+      fakeService.daemonRunning = true
+      compare(panel.pageIndex, 0)
+      verify(panel.pageAvailable(1))
+      panel.showPage(3)
+      fakeService.accountKnown = true
+      fakeService.loggedIn = true
+      compare(panel.pageIndex, 3)
+    }
+
+    function test_system_shows_login_error_and_allows_active_tunnel_disconnect() {
+      fakeService.loggedIn = false
+      fakeService.active = true
+      fakeService.lastError = "Enter a valid 16-digit Mullvad account number."
+      var panel = createTemporaryObject(panelComponent, scene)
+      verify(panel !== null)
+      compare(panel.pageIndex, 3)
+      var page = panel._probePageItem
+      var error = findTextItem(page, fakeService.lastError)
+      verify(error !== null && error.visible)
+      var disconnect = findNamedItem(page, "systemDisconnect")
+      verify(disconnect !== null && disconnect.visible && disconnect.enabled)
+      disconnect.clicked()
+      compare(fakeService.disconnectCount, 1)
     }
 
     function findItemWithLabel(item, label) {
@@ -456,9 +606,10 @@ Item {
       map.selectedPoint = { latitude: 48.8566, longitude: 2.3522 }
       tryCompare(map, "zoomLevel", map.focusZoom, 2000)
       map.selectedPoint = { latitude: 40.7128, longitude: -74.0060 }
-      wait(180)
-      verify(map.zoomLevel < map.focusZoom)
-      tryCompare(map, "zoomLevel", map.focusZoom, 2000)
+      verify(map.flightMidZoom < map.focusZoom)
+      verify(map.flightDuration >= 1100)
+      tryCompare(map, "flightProgress", 1, 3000)
+      compare(map.zoomLevel, map.focusZoom)
       verify(Math.abs(map.centerX - map.pointX(map.selectedPoint)) < 0.5)
       verify(Math.abs(map.centerY - map.pointY(map.selectedPoint)) < 0.5)
     }
@@ -481,7 +632,7 @@ Item {
       compare(fakeService.selectedCity, "got")
       compare(fakeService.selectedShouldConnect, true)
       compare(panel.selectedLocation.cityCode, "got")
-      tryCompare(map, "zoomLevel", map.focusZoom, 2000)
+      tryCompare(map, "zoomLevel", map.focusZoom, 3000)
       verify(Math.abs(map.centerX - map.pointX(panel.selectedLocation)) < 0.5)
     }
 
@@ -532,7 +683,7 @@ Item {
       tryCompare(fakeService, "selectCount", 1)
       compare(panel.selectedLocation.cityCode, "nyc")
       compare(fakeService.selectedShouldConnect, true)
-      tryCompare(map, "zoomLevel", map.focusZoom, 2000)
+      tryCompare(map, "zoomLevel", map.focusZoom, 3000)
       verify(Math.abs(map.centerX - map.pointX(newYork)) < 0.5)
     }
   }

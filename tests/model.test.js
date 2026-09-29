@@ -181,6 +181,7 @@ test("account parser exposes expiry and device but never the account number", ()
 Expires at:         2026-11-04 12:39:19 +02:00
 Device name:        Wired Cow`, Date.parse("2026-11-03T12:39:19+02:00"));
     assert.deepEqual(parsed, {
+        known: true,
         loggedIn: true,
         expiresAt: "2026-11-04 12:39:19 +02:00",
         expiryMs: Date.parse("2026-11-04T12:39:19+02:00"),
@@ -189,6 +190,8 @@ Device name:        Wired Cow`, Date.parse("2026-11-03T12:39:19+02:00"));
     });
     assert.ok(!JSON.stringify(parsed).includes(accountNumber));
     assert.equal(Model.parseAccount("Not logged in").loggedIn, false);
+    assert.equal(Model.parseAccount("Not logged in").known, true);
+    assert.equal(Model.parseAccount("unrecognized account output").known, false);
 });
 
 test("toggles and DNS getter/default/custom commands round-trip supported settings", () => {

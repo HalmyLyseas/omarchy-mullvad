@@ -28,7 +28,9 @@ Panel {
   property int appCatalogueRevision: 0
   property var pendingConfirmation: null
   property bool syncingSettings: false
+  property bool routedToSystemForLogin: false
   readonly property bool cliReady: service.installed && service.daemonRunning
+  readonly property bool accountRequired: cliReady && service.accountKnown && !service.loggedIn
   readonly property var _probePageItem: pageLoader.item
   readonly property var _probePageFlick: pageFlick
   readonly property real _probeHostAvailableCardHeight: panel.hostAvailableCardHeight
@@ -41,7 +43,9 @@ Panel {
     function onValuesChanged() { root.appCatalogueRevision++ }
   }
 
-  function pageAvailable(index) { return index === 0 || index === 3 || cliReady }
+  function pageAvailable(index) {
+    return index === 3 || (index === 0 ? !accountRequired : cliReady && !accountRequired)
+  }
 
   readonly property color foreground: bar ? bar.foreground : Color.foreground
   readonly property color urgent: bar ? bar.urgent : Color.urgent
@@ -148,6 +152,7 @@ Panel {
   }
 
   function cycleFavorite(direction) {
+    if (accountRequired) return "login required"
     var available = Model.filterLocations(arrayFrom(service.locations, 512), "", [], service.relayConstraints)
     var result = Model.cycleFavorite(arrayFrom(favoriteLocations), available, {
       countryCode: service.currentCountryCode,
@@ -156,16 +161,17 @@ Panel {
     if (!result) return "no available favourites"
     var location = locationFor(result.favorite)
     if (!location) return "no available favourites"
-    chooseLocation(location, true)
+    if (!chooseLocation(location, true)) return "selection failed"
     return locationKey(location)
   }
 
   function chooseFavorite(number) {
+    if (accountRequired) return "login required"
     var index = Number(number) - 1
     if (index < 0 || index >= favoriteLocations.length || index !== Math.floor(index)) return "invalid favourite"
     var location = locationFor(favoriteLocations[index])
     if (!location) return "favourite unavailable"
-    chooseLocation(location, true)
+    if (!chooseLocation(location, true)) return "selection failed"
     return locationKey(location)
   }
 
@@ -175,6 +181,10 @@ Panel {
 
   function activeLocation() {
     return selectedLocation || targetMapLocation()
+  }
+
+  function redundantConnectionFeedback(value) {
+    return /^(?:Selecting location|Connecting|Reconnecting|Disconnecting)(?:…| complete)$/.test(String(value || ""))
   }
 
   function locationOptions() {
@@ -345,12 +355,21 @@ Panel {
     else if (text === "3") showPage(2)
     else if (text === "4") showPage(3)
     else if (text === "r" || text === "R") service.refreshAll()
-    else if ((text === "t" || text === "T") && cliReady) service.toggleTunnel()
-    else if ((text === "n" || text === "N") && cliReady) cycleFavorite(1)
-    else if ((text === "p" || text === "P") && cliReady) cycleFavorite(-1)
+    else if ((text === "t" || text === "T") && cliReady && (!accountRequired || service.active)) service.toggleTunnel()
+    else if ((text === "n" || text === "N") && cliReady && !accountRequired) cycleFavorite(1)
+    else if ((text === "p" || text === "P") && cliReady && !accountRequired) cycleFavorite(-1)
   }
 
-  onCliReadyChanged: if (!pageAvailable(pageIndex)) showPage(0)
+  onCliReadyChanged: if (!pageAvailable(pageIndex)) showPage(accountRequired ? 3 : 0)
+  onAccountRequiredChanged: {
+    if (accountRequired && pageIndex !== 3) {
+      routedToSystemForLogin = true
+      showPage(3)
+    } else if (!accountRequired && cliReady && service.loggedIn && routedToSystemForLogin && pageIndex === 3) {
+      routedToSystemForLogin = false
+      showPage(0)
+    }
+  }
 
   function moveScroll(delta) {
     if (!pageFlick) return
@@ -406,7 +425,13 @@ Panel {
     service.refreshAll()
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
-  Component.onCompleted: syncInlineSettings()
+  Component.onCompleted: {
+    syncInlineSettings()
+    if (accountRequired) {
+      routedToSystemForLogin = true
+      showPage(3)
+    }
+  }
 
   Timer {
     interval: 5000
@@ -495,7 +520,7 @@ Panel {
         if (dx) root.movePage(dx)
         else root.moveScroll(dy)
       }
-      onActivateRequested: if (root.cliReady) service.toggleTunnel()
+      onActivateRequested: if (root.cliReady && (!root.accountRequired || service.active)) service.toggleTunnel()
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.focusNext(direction) }
       onTextKey: function(text) { root.handleTextKey(text) }
@@ -601,7 +626,7 @@ Panel {
         width: parent.width
         implicitHeight: overviewHero.implicitHeight
         readonly property bool tunnelChecked: service.active
-        readonly property bool tunnelBusy: service.busy || !service.installed || !service.daemonRunning
+        readonly property bool tunnelBusy: service.busy || !root.cliReady || root.accountRequired
         readonly property string tunnelTooltip: root.cliReady ? root.tunnelHint
           : !service.installed ? "Install Mullvad VPN first" : "Start the Mullvad daemon first"
         readonly property color controlAccent: root.accent
@@ -609,9 +634,10 @@ Panel {
 
         PanelHero {
           id: overviewHero
+          objectName: "overviewHero"
           width: parent.width
           title: service.installed ? "Mullvad VPN" : "Mullvad unavailable"
-          meta: service.installed ? service.statusText : "Install Mullvad VPN 2026.4 to enable this widget"
+          meta: service.installed ? service.statusText : "Mullvad is not installed"
           foreground: root.foreground
           fontFamily: root.fontFamily
           iconOpacity: service.connected ? 1 : 0.55
@@ -628,9 +654,9 @@ Panel {
               id: tunnelSwitch
               checked: overviewHeader.tunnelChecked
               busy: overviewHeader.tunnelBusy
-              enabled: root.cliReady
-              opacity: root.cliReady ? 1 : 0.35
-              activeFocusOnTab: root.cliReady
+              enabled: root.cliReady && !root.accountRequired
+              opacity: root.cliReady && !root.accountRequired ? 1 : 0.35
+              activeFocusOnTab: root.cliReady && !root.accountRequired
               hasCursor: activeFocus
               foreground: overviewHero.foreground
               accent: overviewHeader.controlAccent
@@ -650,14 +676,21 @@ Panel {
       }
 
       Text {
+        objectName: "exitNodeInfo"
         textFormat: Text.PlainText
-        visible: service.connected && (service.country !== "" || service.ip !== "")
         width: parent.width
-        text: "Exit: " + [service.city, service.country, service.hostname, service.ip].filter(function(value) { return String(value || "") !== "" }).join(" · ")
+        height: Math.max(Style.space(20), font.pixelSize + Style.space(5))
+        text: service.connected && (service.country !== "" || service.ip !== "")
+          ? "Exit: " + [service.city, service.country, service.hostname, service.ip].filter(function(value) { return String(value || "") !== "" }).join(" · ") : ""
         color: root.dim
         font.family: root.fontFamily
         font.pixelSize: Style.font.bodySmall
-        wrapMode: Text.WordWrap
+        verticalAlignment: Text.AlignVCenter
+        elide: Text.ElideMiddle
+        ToolTip.visible: exitInfoHover.hovered && text !== ""
+        ToolTip.text: text
+        ToolTip.delay: 500
+        HoverHandler { id: exitInfoHover }
       }
 
       PanelSeparator { foreground: root.foreground }
@@ -666,6 +699,7 @@ Panel {
         objectName: "overviewActionStatus"
         textFormat: Text.PlainText
         visible: service.actionStatus !== "" && service.actionStatus !== service.lastError
+          && !root.redundantConnectionFeedback(service.actionStatus)
         width: parent.width
         text: service.actionStatus
         color: root.dim
@@ -677,6 +711,7 @@ Panel {
       Text {
         textFormat: Text.PlainText
         visible: service.lastError !== ""
+          && service.lastError !== "Mullvad CLI not found. Install Mullvad VPN, then refresh."
         width: parent.width
         text: service.lastError
         color: root.urgent
@@ -1004,15 +1039,6 @@ Panel {
         }
       }
 
-      Text {
-        textFormat: Text.PlainText
-        width: parent.width
-        text: "Keys: 1–4 pages · T tunnel · R refresh · N/P favourites · H/L pages · J/K scroll"
-        color: root.dim
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
-        wrapMode: Text.WordWrap
-      }
     }
   }
 
@@ -1328,12 +1354,37 @@ Panel {
       PanelSeparator { foreground: root.foreground }
       PanelSectionHeader { text: "ACCOUNT"; foreground: root.foreground; fontFamily: root.fontFamily }
 
+      Text {
+        textFormat: Text.PlainText
+        visible: !root.cliReady
+        width: parent.width
+        text: !service.installed
+          ? "Account status unavailable while Mullvad is not installed."
+          : "Account status unavailable while the Mullvad daemon is stopped."
+        color: root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.bodySmall
+        wrapMode: Text.WordWrap
+      }
+
       Column {
-        visible: !service.loggedIn
+        visible: root.cliReady && !service.loggedIn
         enabled: root.cliReady
         opacity: root.cliReady ? 1 : 0.35
         width: parent.width
         spacing: Style.space(8)
+
+        Text {
+          textFormat: Text.PlainText
+          width: parent.width
+          text: service.accountKnown
+            ? "Log in to enable Connection, Advanced, and Excluded."
+            : "Account status could not be confirmed. Refresh, or log in if needed."
+          color: root.foreground
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.bodySmall
+          wrapMode: Text.WordWrap
+        }
 
         Text {
           textFormat: Text.PlainText
@@ -1370,6 +1421,7 @@ Panel {
             bordered: true
             focusable: true
             enabled: service.installed && service.daemonRunning && !service.busy && accountField.text.trim() !== ""
+            opacity: enabled ? 1 : 0.35
             foreground: root.foreground
             onClicked: {
               var account = accountField.text
@@ -1381,8 +1433,32 @@ Panel {
         }
       }
 
+      Button {
+        objectName: "systemDisconnect"
+        text: "Disconnect tunnel"
+        visible: root.cliReady && !service.loggedIn && service.active
+        enabled: !service.busy
+        opacity: enabled ? 1 : 0.35
+        bordered: true
+        focusable: enabled
+        foreground: root.foreground
+        onClicked: service.disconnectTunnel()
+      }
+
+      Text {
+        objectName: "systemAccountError"
+        textFormat: Text.PlainText
+        visible: root.cliReady && service.lastError !== ""
+        width: parent.width
+        text: service.lastError
+        color: root.urgent
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.bodySmall
+        wrapMode: Text.WordWrap
+      }
+
       RowLayout {
-        visible: service.loggedIn
+        visible: root.cliReady && service.loggedIn
         width: parent.width
         spacing: Style.space(8)
 
@@ -1520,10 +1596,11 @@ Panel {
         font.pixelSize: Style.font.caption
         elide: Text.ElideRight
       }
-      Button {
-        text: "Check now"
-        bordered: true
-        enabled: service.packages.length > 0 && service.updateCheckStatus !== "checking"
+        Button {
+          text: "Check now"
+          bordered: true
+          enabled: service.packages.length > 0 && service.updateCheckStatus !== "checking"
+          opacity: enabled ? 1 : 0.35
         focusable: enabled
         foreground: root.foreground
         onClicked: service.checkForUpdates()

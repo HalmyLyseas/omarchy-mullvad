@@ -31,6 +31,7 @@ Item {
   property double updateCheckedAt: 0
   property var updateResults: []
   property bool loggedIn: false
+  property bool accountKnown: false
   property bool connected: false
   property string disconnectingAction: ""
   readonly property bool transitional: state === "connecting" || state === "disconnecting"
@@ -74,6 +75,8 @@ Item {
   property int _statusSeq: 0
   property int _statusApplySeq: 0
   property int _pendingStatusSeq: 0
+  property int _accountRevision: 0
+  property int _pendingAccountRevision: 0
   property var _readLines: []
   property var _readErrorLines: []
   property string _readOutputRemainder: ""
@@ -223,6 +226,7 @@ Item {
     _readQueue = queue
     _readKind = request.kind
     if (request.kind === "status") root._pendingStatusSeq = ++root._statusSeq
+    if (request.kind === "account") root._pendingAccountRevision = root._accountRevision
     _resetReadOutput()
     _readGen++
     readWatchdog.interval = root.readTimeoutMs
@@ -233,7 +237,7 @@ Item {
 
   function refreshAll() {
     _enqueueRead("packageInfo", [packageInfoScript])
-    _enqueueRead("probe", ["/usr/bin/env"].concat(Model.argv("version")))
+    _enqueueRead("probe", Model.argv("version"))
   }
 
   function _enqueueAuthoritativeReads() {
@@ -254,6 +258,7 @@ Item {
   function refreshStatus() {
     if (installed && daemonRunning) {
       _enqueueRead("status", Model.argv("status"))
+      _enqueueRead("account", Model.argv("accountGet"))
       _enqueueRead("daemonPid", ["pgrep", "-x", "mullvad-daemon"])
     } else refreshAll()
   }
@@ -304,6 +309,20 @@ Item {
     }
   }
 
+  function _clearAccountState() {
+    accountKnown = false
+    loggedIn = false
+    accountExpiry = ""
+    accountDaysRemaining = -1
+  }
+
+  function _markLoggedOut() {
+    accountKnown = true
+    loggedIn = false
+    accountExpiry = ""
+    accountDaysRemaining = -1
+  }
+
   function _applyRead(kind, raw, error, exitCode) {
     if (kind === "probe") {
       installed = exitCode === 0
@@ -316,6 +335,7 @@ Item {
         suggestedUpgrade = ""
         daemonPid = 0
         connected = false
+        _clearAccountState()
         state = "unavailable"
         statusText = "Mullvad is not installed"
         lastError = String(error || "").indexOf("timed out") !== -1
@@ -357,6 +377,7 @@ Item {
         daemonSupported = null
         suggestedUpgrade = ""
         connected = false
+        _clearAccountState()
         state = "unavailable"
         statusText = "Mullvad daemon unavailable"
         var daemonDetail = _shortError(combined, "")
@@ -375,17 +396,16 @@ Item {
     }
 
     if (kind === "account") {
+      if (_pendingAccountRevision !== _accountRevision || exitCode !== 0) return
       try {
         var account = Model.parseAccount(combined, Date.now())
+        if (!account.known) return
         loggedIn = account.loggedIn === true
+        accountKnown = true
         accountExpiry = String(account.expiresAt || "")
         accountDaysRemaining = account.daysRemaining === undefined || account.daysRemaining === null
           ? -1 : Number(account.daysRemaining)
-      } catch (e) {
-        loggedIn = false
-        accountExpiry = ""
-        accountDaysRemaining = -1
-      }
+      } catch (e) { return }
       return
     }
     if (exitCode !== 0) return
@@ -493,6 +513,7 @@ Item {
       actionStatus = lastError
       return null
     }
+    if ((action === "connect" || action === "reconnect") && !_requireLogin()) return null
     try {
       return Model.argv(action, params || {})
     } catch (e) {
@@ -522,6 +543,13 @@ Item {
     return _enqueueAction(_command(action, params), label, opts)
   }
 
+  function _requireLogin() {
+    if (!accountKnown || loggedIn) return true
+    lastError = "Log in to Mullvad on the System tab before connecting."
+    actionStatus = lastError
+    return false
+  }
+
   function _armAction(command, label, secret, quiet) {
     actionStatusTimer.stop()
     _resetActionOutput()
@@ -548,6 +576,7 @@ Item {
 
   function connectTunnel() {
     if (busy) { actionStatus = "Wait for the current Mullvad action to finish."; return }
+    if (!_requireLogin()) return
     if (!_relayAvailable(_relaySettings())) return
     _runAction("connect", {}, "Connecting")
   }
@@ -615,6 +644,7 @@ Item {
 
   function selectLocation(countryCode, cityCode, shouldConnect, hostname) {
     if (busy) { actionStatus = "Wait for the current Mullvad action to finish."; return false }
+    if (shouldConnect === true && !_requireLogin()) return false
     var target = {
       type: hostname ? "hostname" : "city",
       countryCode: String(countryCode || "").toLowerCase(),
@@ -630,6 +660,7 @@ Item {
     var followup = null
     if (shouldConnect === true)
       followup = _command(active ? "reconnect" : "connect", {})
+    if (shouldConnect === true && !followup) return false
     _enqueueAction(locationCommand, "Selecting location")
     relayConstraints = nextSettings
     if (followup) _enqueueAction(followup, active ? "Reconnecting" : "Connecting")
@@ -997,6 +1028,14 @@ Item {
       } else {
         root.lastError = ""
         root.actionStatus = label + " complete"
+        if (label === "Logging out") {
+          root._accountRevision++
+          root._markLoggedOut()
+        } else if (label === "Logging in") {
+          root._accountRevision++
+          root.loggedIn = true
+          root.accountKnown = true
+        }
         actionStatusTimer.restart()
         success = true
       }
