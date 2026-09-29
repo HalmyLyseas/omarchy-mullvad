@@ -68,7 +68,9 @@ Item {
     property string selectedCity: ""
     property bool selectedShouldConnect: false
     property var dnsInput: null
+    property var dnsDefaultFlags: null
     function setDnsCustom(value) { dnsInput = value }
+    function setDnsDefault(flags) { dnsDefaultFlags = flags }
     function refreshAll() { refreshCount++ }
     function refreshExcluded() {}
     function toggleTunnel() { toggleCount++ }
@@ -162,7 +164,10 @@ Item {
       fakeService.excludedProcesses = []
       DesktopEntries.applications.values = []
       fakeService.dnsInput = null
+      fakeService.dnsDefaultFlags = null
       fakeService.locations = []
+      fakeService.relayConstraints = ({ location: { type: "any" }, providers: [],
+        ownership: "any", ipVersion: "any", multihop: false, entry: {} })
       fakeService.selectCount = 0
       fakeService.selectedCountry = ""
       fakeService.selectedCity = ""
@@ -200,6 +205,56 @@ Item {
         if (found) return found
       }
       return null
+    }
+
+    function findToggleWithLabel(item, label) {
+      if (!item) return null
+      if (item.label === label && typeof item.clicked === "function") return item
+      var children = item.children || []
+      for (var i = 0; i < children.length; i++) {
+        var found = findToggleWithLabel(children[i], label)
+        if (found) return found
+      }
+      return null
+    }
+
+    function test_main_default_content_fits_when_screen_has_room() {
+      var paris = { countryCode: "fr", cityCode: "par", country: "France", city: "Paris",
+                    latitude: 48.8566, longitude: 2.3522,
+                    servers: [{ hostname: "fr-par-wg-001", provider: "Example", ownership: "owned" }] }
+      fakeService.locations = [paris]
+      fakeService.relayConstraints = {
+        location: { type: "city", countryCode: "fr", cityCode: "par" }, providers: [],
+        ownership: "any", ipVersion: "any", multihop: false, entry: {}
+      }
+      var panel = createTemporaryObject(panelComponent, scene)
+      verify(panel !== null)
+      panel.favoriteLocations = [paris]
+      panel.recentLocations = [paris]
+      waitForRendering(panel)
+      var flick = panel._probePageFlick
+      verify(flick !== null)
+      verify(flick.contentHeight < 960, "Main exceeds its expanded content budget")
+      if (panel._probeHostAvailableCardHeight >= flick.contentHeight + 100)
+        verify(!flick.interactive, "Main needs scrolling despite available screen height")
+    }
+
+    function test_advanced_dns_uses_compact_two_column_grid() {
+      var panel = createTemporaryObject(panelComponent, scene)
+      verify(panel !== null)
+      panel.showPage(1)
+      var ads = findToggleWithLabel(panel._probePageItem, "Ads")
+      var trackers = findToggleWithLabel(panel._probePageItem, "Trackers")
+      var social = findToggleWithLabel(panel._probePageItem, "Social media")
+      verify(ads !== null && trackers !== null && social !== null)
+      compare(ads.y, trackers.y)
+      verify(trackers.x > ads.x)
+      verify(social.y > ads.y)
+      verify(ads.height < 54)
+      verify(panel._probePageFlick.contentHeight < 700,
+        "Advanced exceeds its content budget: " + panel._probePageFlick.contentHeight)
+      ads.clicked()
+      compare(fakeService.dnsDefaultFlags.blockAds, true)
     }
 
     function test_dns_apply_dispatches_raw_string_to_service() {

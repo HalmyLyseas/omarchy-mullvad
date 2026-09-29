@@ -30,6 +30,8 @@ Panel {
   property bool syncingSettings: false
   readonly property bool cliReady: service.installed && service.daemonRunning
   readonly property var _probePageItem: pageLoader.item
+  readonly property var _probePageFlick: pageFlick
+  readonly property real _probeHostAvailableCardHeight: panel.hostAvailableCardHeight
   readonly property var _probeConfirmDialog: confirmDialog
   readonly property var _probeKeyCatcher: keyCatcher
   readonly property string appEmptyText: "No installed applications match your search."
@@ -478,7 +480,8 @@ Panel {
     contentWidth: panel.fittedContentWidth(Style.space(500), Style.space(560))
     contentHeight: Math.max(121, Math.round(Math.min(
       hostAvailableCardHeight,
-      Style.space(680),
+      root.pageIndex === 0 ? Style.space(1040)
+        : root.pageIndex === 1 ? Style.space(780) : Style.space(680),
       Math.max(Style.space(240), panelColumn.implicitHeight + verticalContentInset))))
 
     PanelKeyCatcher {
@@ -531,7 +534,8 @@ Panel {
           id: pageFlick
           width: parent.width
           height: Math.min(pageLoader.item ? pageLoader.item.implicitHeight : 0,
-                           Style.space(590),
+                           root.pageIndex === 0 ? Style.space(960)
+                             : root.pageIndex === 1 ? Style.space(700) : Style.space(590),
                            Math.max(Style.space(180), panel.hostAvailableCardHeight - panel.verticalContentInset - Style.space(60)))
           implicitHeight: height
           contentWidth: width
@@ -1071,35 +1075,48 @@ Panel {
       PanelSeparator { foreground: root.foreground }
       PanelSectionHeader { text: "DNS CONTENT BLOCKING"; foreground: root.foreground; fontFamily: root.fontFamily }
 
-      Toggle {
-        width: parent.width; label: "Ads"; checked: !!(service.dns || {}).blockAds
-        enabled: !service.busy; foreground: root.foreground; fontFamily: root.fontFamily
-        onClicked: service.setDnsDefault(root.dnsFlags("blockAds", !checked))
-      }
-      Toggle {
-        width: parent.width; label: "Trackers"; checked: !!(service.dns || {}).blockTrackers
-        enabled: !service.busy; foreground: root.foreground; fontFamily: root.fontFamily
-        onClicked: service.setDnsDefault(root.dnsFlags("blockTrackers", !checked))
-      }
-      Toggle {
-        width: parent.width; label: "Malware"; checked: !!(service.dns || {}).blockMalware
-        enabled: !service.busy; foreground: root.foreground; fontFamily: root.fontFamily
-        onClicked: service.setDnsDefault(root.dnsFlags("blockMalware", !checked))
-      }
-      Toggle {
-        width: parent.width; label: "Adult content"; checked: !!(service.dns || {}).blockAdultContent
-        enabled: !service.busy; foreground: root.foreground; fontFamily: root.fontFamily
-        onClicked: service.setDnsDefault(root.dnsFlags("blockAdultContent", !checked))
-      }
-      Toggle {
-        width: parent.width; label: "Gambling"; checked: !!(service.dns || {}).blockGambling
-        enabled: !service.busy; foreground: root.foreground; fontFamily: root.fontFamily
-        onClicked: service.setDnsDefault(root.dnsFlags("blockGambling", !checked))
-      }
-      Toggle {
-        width: parent.width; label: "Social media"; checked: !!(service.dns || {}).blockSocialMedia
-        enabled: !service.busy; foreground: root.foreground; fontFamily: root.fontFamily
-        onClicked: service.setDnsDefault(root.dnsFlags("blockSocialMedia", !checked))
+      GridLayout {
+        width: parent.width
+        columns: 2
+        columnSpacing: Style.space(8)
+        rowSpacing: Style.space(4)
+
+        Toggle {
+          Layout.fillWidth: true; Layout.preferredHeight: Style.space(44)
+          label: "Ads"; checked: !!(service.dns || {}).blockAds
+          enabled: !service.busy; foreground: root.foreground; fontFamily: root.fontFamily
+          onClicked: service.setDnsDefault(root.dnsFlags("blockAds", !checked))
+        }
+        Toggle {
+          Layout.fillWidth: true; Layout.preferredHeight: Style.space(44)
+          label: "Trackers"; checked: !!(service.dns || {}).blockTrackers
+          enabled: !service.busy; foreground: root.foreground; fontFamily: root.fontFamily
+          onClicked: service.setDnsDefault(root.dnsFlags("blockTrackers", !checked))
+        }
+        Toggle {
+          Layout.fillWidth: true; Layout.preferredHeight: Style.space(44)
+          label: "Malware"; checked: !!(service.dns || {}).blockMalware
+          enabled: !service.busy; foreground: root.foreground; fontFamily: root.fontFamily
+          onClicked: service.setDnsDefault(root.dnsFlags("blockMalware", !checked))
+        }
+        Toggle {
+          Layout.fillWidth: true; Layout.preferredHeight: Style.space(44)
+          label: "Adult content"; checked: !!(service.dns || {}).blockAdultContent
+          enabled: !service.busy; foreground: root.foreground; fontFamily: root.fontFamily
+          onClicked: service.setDnsDefault(root.dnsFlags("blockAdultContent", !checked))
+        }
+        Toggle {
+          Layout.fillWidth: true; Layout.preferredHeight: Style.space(44)
+          label: "Gambling"; checked: !!(service.dns || {}).blockGambling
+          enabled: !service.busy; foreground: root.foreground; fontFamily: root.fontFamily
+          onClicked: service.setDnsDefault(root.dnsFlags("blockGambling", !checked))
+        }
+        Toggle {
+          Layout.fillWidth: true; Layout.preferredHeight: Style.space(44)
+          label: "Social media"; checked: !!(service.dns || {}).blockSocialMedia
+          enabled: !service.busy; foreground: root.foreground; fontFamily: root.fontFamily
+          onClicked: service.setDnsDefault(root.dnsFlags("blockSocialMedia", !checked))
+        }
       }
 
       RowLayout {
