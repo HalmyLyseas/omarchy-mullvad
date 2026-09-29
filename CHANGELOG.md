@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.6.0
 
 - Replace the static 1:110m map with 1:50m land and borders, wheel zoom, drag panning, and an animated move to selected relay cities.
 - Keep map data bundled and offline, with a larger Overview map and fixed-size relay markers.
