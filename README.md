@@ -34,9 +34,9 @@ The plugin ID is now `halmylyseas.mullvad-vpn`. Installations under the earlier 
 - Right-click: connect or disconnect
 - Middle-click: refresh
 
-The panel has Overview, Locations, Advanced, Excluded Apps, and System pages. It is keyboard-accessible. System remains available when the Mullvad CLI or daemon is unavailable and offers only a read-only update check; installation and package or service changes remain separate administrator actions.
+The panel has Main, Advanced, Excluded, and System tabs. It is keyboard-accessible (1–4 select tabs). Main and System remain available when the Mullvad CLI or daemon is unavailable. Account controls on System require a working CLI and daemon; its package and update diagnostics remain read-only.
 
-On Overview, scroll over the map to zoom, drag to pan, and click a relay marker to select it. The map controls zoom in, zoom out, and reset to the world view. Choosing a favourite or another exit location moves the map to that location with a brief zoom-out, pan, and zoom-in animation. The map stays offline and limits zoom to regional detail.
+On Main, search for an exit city or select an eligible marker on the map. Favourites and recent cities are one-click choices; selecting a city connects or reconnects as needed. The selected relay card lets you save a favourite or choose a specific server. Relay filters are behind the Filters button. Scroll over the map to zoom, drag to pan, and use its controls to zoom or reset. Choosing a city moves the map there with a brief zoom-out, pan, and zoom-in animation. The map stays offline and limits zoom to regional detail. Connection policy is on Advanced; account login and logout are on System.
 
 ## Known limitations
 

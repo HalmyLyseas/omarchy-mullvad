@@ -177,16 +177,15 @@ ShellRoot {
       var panel = widget._probePanelItem
       service.installed = scenario !== "availability-cli"
       service.daemonRunning = scenario === "availability-ready"
-      panel.showPage(2)
+      panel.showPage(1)
       var dependentSelectedPage = panel.pageIndex
-      panel.showPage(4)
+      panel.showPage(3)
       finish("", {
         cliReady: panel.cliReady,
-        overviewAvailable: panel.pageAvailable(0),
-        locationsAvailable: panel.pageAvailable(1),
-        advancedAvailable: panel.pageAvailable(2),
-        excludedAvailable: panel.pageAvailable(3),
-        systemAvailable: panel.pageAvailable(4),
+        mainAvailable: panel.pageAvailable(0),
+        advancedAvailable: panel.pageAvailable(1),
+        excludedAvailable: panel.pageAvailable(2),
+        systemAvailable: panel.pageAvailable(3),
         selectedPage: dependentSelectedPage,
         systemSelectedPage: panel.pageIndex,
         systemPageLoaded: panel._probePageItem !== null,
@@ -196,7 +195,7 @@ ShellRoot {
       var cataloguePanel = widget._probePanelItem
       service.installed = true
       service.daemonRunning = true
-      cataloguePanel.showPage(3)
+      cataloguePanel.showPage(2)
       Qt.callLater(function() {
         root.finish("", {
           selectedPage: cataloguePanel.pageIndex,
@@ -211,7 +210,7 @@ ShellRoot {
       var recentPanel = widget._probePanelItem
       service.installed = true
       service.daemonRunning = true
-      recentPanel.showPage(3)
+      recentPanel.showPage(2)
       var values = DesktopEntries.applications.values || []
       var usable = []
       for (var i = 0; i < values.length && usable.length < 2; i++)
@@ -228,7 +227,7 @@ ShellRoot {
       recentPanel.recordLaunchedApp(String(usable[0].id))
       var queryAfterLaunch = recentPanel.appQuery
       recentPanel.appQuery = "stale"
-      recentPanel.showPage(2)
+      recentPanel.showPage(1)
       finish("", {
         recentCount: recentRows.length,
         recentFirst: recentRows.length ? String(recentRows[0].id) : "",
@@ -343,7 +342,7 @@ ShellRoot {
       var excludedPanel = widget._probePanelItem
       service.installed = true
       service.daemonRunning = true
-      excludedPanel.showPage(3)
+      excludedPanel.showPage(2)
       Qt.callLater(function() {
         var groups = excludedPanel.excludedGroups()
         root.finish("", {
@@ -397,8 +396,8 @@ ShellRoot {
         } else if (root.interactionPhase === 4) {
           root.interactionPhase = 5
           root.interactionValues.disconnectControlRan = true
-          panel.handleTextKey("3")
-          root.interactionValues.advancedPageLoaded = panel.pageIndex === 2 && panel._probePageItem !== null
+          panel.handleTextKey("2")
+          root.interactionValues.advancedPageLoaded = panel.pageIndex === 1 && panel._probePageItem !== null
           var component = Qt.createComponent("file://" + root.pluginDir + "/OmaDropdown.qml")
           root.advancedControl = component.createObject(panel._probePageItem, {
             x: 0, y: 0, width: 320,

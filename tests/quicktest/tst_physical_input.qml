@@ -45,6 +45,7 @@ Item {
     property string hostname: ""
     property string ip: ""
     property string lastError: ""
+    property string actionStatus: ""
     property bool cliVersionSupported: true
     property string cliVersion: "2026.4"
     property bool tunnelDropWarning: false
@@ -65,6 +66,7 @@ Item {
     property int selectCount: 0
     property string selectedCountry: ""
     property string selectedCity: ""
+    property bool selectedShouldConnect: false
     property var dnsInput: null
     function setDnsCustom(value) { dnsInput = value }
     function refreshAll() { refreshCount++ }
@@ -74,6 +76,7 @@ Item {
       selectCount++
       selectedCountry = countryCode
       selectedCity = cityCode
+      selectedShouldConnect = reconnect
       return true
     }
     function launchExcludedApp(desktopId) { return false }
@@ -163,6 +166,7 @@ Item {
       fakeService.selectCount = 0
       fakeService.selectedCountry = ""
       fakeService.selectedCity = ""
+      fakeService.selectedShouldConnect = false
     }
 
     function findWorldMap(item) {
@@ -200,7 +204,7 @@ Item {
 
     function test_dns_apply_dispatches_raw_string_to_service() {
       var panel = createTemporaryObject(panelComponent, scene)
-      panel.showPage(2)
+      panel.showPage(1)
       var apply = findTextItem(panel._probePageItem, "Apply")
       verify(apply !== null)
       var field = apply.parent.children[0]
@@ -219,7 +223,7 @@ Item {
         get execString() { scans++; return "/usr/bin/example" }
       }]
       var panel = createTemporaryObject(panelComponent, scene)
-      panel.showPage(3)
+      panel.showPage(2)
       var page = panel._probePageItem
       verify(page !== null)
       compare(page.groups.length, 0)
@@ -407,7 +411,7 @@ Item {
     function test_panel_world_map_pointer_selection_reaches_inert_service() {
       fakeService.locations = [{
         countryCode: "se", cityCode: "got", country: "Sweden", city: "Gothenburg",
-        latitude: 0, longitude: 0, servers: []
+        latitude: 0, longitude: 0, servers: [{ hostname: "se-got-wg-001", provider: "Example", ownership: "owned", ips: ["192.0.2.1"] }]
       }]
       var panel = createTemporaryObject(panelComponent, scene)
       verify(panel !== null)
@@ -420,31 +424,59 @@ Item {
       tryCompare(fakeService, "selectCount", 1)
       compare(fakeService.selectedCountry, "se")
       compare(fakeService.selectedCity, "got")
+      compare(fakeService.selectedShouldConnect, true)
       compare(panel.selectedLocation.cityCode, "got")
       tryCompare(map, "zoomLevel", map.focusZoom, 2000)
       verify(Math.abs(map.centerX - map.pointX(panel.selectedLocation)) < 0.5)
     }
 
+    function test_panel_map_only_shows_filter_eligible_cities() {
+      fakeService.locations = [
+        { countryCode: "fr", cityCode: "par", country: "France", city: "Paris",
+          latitude: 48.8566, longitude: 2.3522,
+          servers: [{ hostname: "fr-par-wg-001", provider: "Example", ownership: "owned" }] },
+        { countryCode: "us", cityCode: "nyc", country: "United States", city: "New York",
+          latitude: 40.7128, longitude: -74.0060,
+          servers: [{ hostname: "us-nyc-wg-001", provider: "Other", ownership: "rented" }] }
+      ]
+      fakeService.relayConstraints = {
+        location: { type: "any" }, providers: ["Example"], ownership: "any",
+        ipVersion: "any", multihop: false, entry: {}
+      }
+      var panel = createTemporaryObject(panelComponent, scene)
+      verify(panel !== null)
+      var map = findWorldMap(panel._probePageItem)
+      verify(map !== null)
+      compare(map.locations.length, 1)
+      compare(map.locations[0].cityCode, "par")
+      compare(panel.locationOptions().length, 1)
+      compare(panel.locationOptions()[0].value, "fr/par")
+      fakeService.relayConstraints = {
+        location: { type: "any" }, providers: [], ownership: "any",
+        ipVersion: "any", multihop: false, entry: {}
+      }
+    }
+
     function test_panel_favourite_selection_moves_world_map() {
       var paris = { countryCode: "fr", cityCode: "par", country: "France", city: "Paris",
-                    latitude: 48.8566, longitude: 2.3522, servers: [] }
+                    latitude: 48.8566, longitude: 2.3522, servers: [{ hostname: "fr-par-wg-001", provider: "Example", ownership: "owned", ips: ["192.0.2.2"] }] }
       var newYork = { countryCode: "us", cityCode: "nyc", country: "United States", city: "New York",
-                      latitude: 40.7128, longitude: -74.0060, servers: [] }
+                      latitude: 40.7128, longitude: -74.0060, servers: [{ hostname: "us-nyc-wg-001", provider: "Example", ownership: "owned", ips: ["192.0.2.3"] }] }
       fakeService.locations = [paris, newYork]
       var panel = createTemporaryObject(panelComponent, scene)
       verify(panel !== null)
       panel.favoriteLocations = [newYork]
+      waitForRendering(panel)
       var map = findWorldMap(panel._probePageItem)
-      var favourite = findItemWithLabel(panel._probePageItem, "Quick select favourite")
+      var favourite = findTextItem(panel._probePageItem, "1. New York")
       verify(map !== null)
       verify(favourite !== null)
-      favourite.focusTrigger()
-      keyClick(Qt.Key_Space)
-      tryCompare(favourite, "popupOpen", true)
-      keyClick(Qt.Key_Down)
-      keyClick(Qt.Key_Return)
+      verify(favourite.enabled)
+      verify(favourite.width > 0 && favourite.height > 0)
+      mouseClick(favourite, favourite.width / 2, favourite.height / 2)
       tryCompare(fakeService, "selectCount", 1)
       compare(panel.selectedLocation.cityCode, "nyc")
+      compare(fakeService.selectedShouldConnect, true)
       tryCompare(map, "zoomLevel", map.focusZoom, 2000)
       verify(Math.abs(map.centerX - map.pointX(newYork)) < 0.5)
     }

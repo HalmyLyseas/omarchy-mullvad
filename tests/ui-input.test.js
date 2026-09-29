@@ -60,5 +60,5 @@ test("physical suite covers panel routing, dropdowns, dialogs, and map payloads"
 
 test("the real Panel consumes WorldMap selection through its inert-service boundary", () => {
     const panel = readFileSync(join(root, "Panel.qml"), "utf8");
-    assert.match(panel, /WorldMap\s*\{[\s\S]*?onLocationSelected:\s*function\(location\)\s*\{\s*root\.chooseLocation\(location, service\.active\)\s*\}/);
+    assert.match(panel, /WorldMap\s*\{[\s\S]*?onLocationSelected:\s*function\(location\)\s*\{\s*root\.chooseLocation\(location, true\)\s*\}/);
 });

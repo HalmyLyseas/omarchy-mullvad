@@ -100,28 +100,28 @@ check_json "$json" "scoped facade accepts only own-ID settings updates" foreignU
 check_json "$json" "scalar bar and popup ownership APIs remain usable" scalarPropertiesUsable eq true popupOwned eq true popupReleased eq true
 
 json="$(run_case availability-cli)"
-check_json "$json" "Overview remains available without the CLI" cliReady eq false overviewAvailable eq true
-check_json "$json" "CLI-dependent pages lock without the CLI" locationsAvailable eq false advancedAvailable eq false excludedAvailable eq false
-check_json "$json" "unavailable CLI cannot navigate away from Overview" selectedPage eq 0 barTooltip contains 'not installed'
-check_json "$json" "System remains available without the CLI" systemAvailable eq true systemSelectedPage eq 4 systemPageLoaded eq true
+check_json "$json" "Main remains available without the CLI" cliReady eq false mainAvailable eq true
+check_json "$json" "CLI-dependent pages lock without the CLI" advancedAvailable eq false excludedAvailable eq false
+check_json "$json" "unavailable CLI cannot navigate away from Main" selectedPage eq 0 barTooltip contains 'not installed'
+check_json "$json" "System remains available without the CLI" systemAvailable eq true systemSelectedPage eq 3 systemPageLoaded eq true
 
 json="$(run_case availability-daemon)"
-check_json "$json" "daemon unavailability keeps the panel on Overview" cliReady eq false selectedPage eq 0
-check_json "$json" "daemon-dependent pages and tunnel UI remain unavailable" locationsAvailable eq false barTooltip contains daemon barTooltip contains unavailable
-check_json "$json" "System remains available without the daemon" systemAvailable eq true systemSelectedPage eq 4 systemPageLoaded eq true
+check_json "$json" "daemon unavailability keeps the panel on Main" cliReady eq false selectedPage eq 0
+check_json "$json" "daemon-dependent pages and tunnel UI remain unavailable" advancedAvailable eq false barTooltip contains daemon barTooltip contains unavailable
+check_json "$json" "System remains available without the daemon" systemAvailable eq true systemSelectedPage eq 3 systemPageLoaded eq true
 
 json="$(run_case availability-ready)"
 check_json "$json" "pages unlock when CLI and daemon are ready" cliReady eq true advancedAvailable eq true
-check_json "$json" "ready panel can navigate to Advanced" selectedPage eq 2
+check_json "$json" "ready panel can navigate to Advanced" selectedPage eq 1
 
 json="$(run_case excluded-groups)"
-check_json "$json" "Excluded page opens without engine errors" note empty ignored selectedPage eq 3
+check_json "$json" "Excluded page opens without engine errors" note empty ignored selectedPage eq 2
 check_json "$json" "fourteen excluded processes render as one app group" processCount eq 14 groupCount eq 1
 check_json "$json" "group exposes the root process label and member count" firstLabel ieq chromium firstCount eq 14
 check_json "$json" "Excluded page receives the grouped model" pageLoaded eq true pageGroupCount eq 1
 
 json="$(run_case local-app-catalogue)"
-check_json "$json" "local application catalogue scenario loads the Excluded page" note empty ignored selectedPage eq 3
+check_json "$json" "local application catalogue scenario loads the Excluded page" note empty ignored selectedPage eq 2
 check_json "$json" "probe matches the scoped Omarchy 4.0.3 facade" appLibraryNull eq true ownService eq true foreignServiceNull eq true
 check_json "$json" "excluded-process labels use local desktop metadata" excludedMetadataCount ge 1
 check_json "$json" "local catalogue does not require the host app library" emptyText eq 'No installed applications match your search.'

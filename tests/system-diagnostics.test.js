@@ -22,13 +22,27 @@ function writeExecutable(path, contents) {
     chmodSync(path, 0o755);
 }
 
-test("System is a fifth tab and remains available without the CLI or daemon", () => {
+test("four-tab navigation keeps Main and System available without the CLI or daemon", () => {
     const panel = readFileSync(join(root, "Panel.qml"), "utf8");
-    assert.match(panel, /model:\s*\["Overview", "Locations", "Advanced", "Excluded", "System"\]/);
-    assert.match(panel, /function pageAvailable\(index\)\s*\{\s*return index === 0 \|\| index === 4 \|\| cliReady\s*\}/);
-    assert.match(panel, /next = \(next \+ delta \+ 5\) % 5/);
-    assert.match(panel, /text === "5"\) showPage\(4\)/);
-    assert.match(panel, /root\.pageIndex === 4 \? systemPage/);
+    assert.match(panel, /model:\s*\["Main", "Advanced", "Excluded", "System"\]/);
+    assert.match(panel, /function pageAvailable\(index\)\s*\{\s*return index === 0 \|\| index === 3 \|\| cliReady\s*\}/);
+    assert.match(panel, /next = \(next \+ delta \+ 4\) % 4/);
+    assert.match(panel, /text === "4"\) showPage\(3\)/);
+    assert.match(panel, /root\.pageIndex === 3 \? systemPage/);
+});
+
+test("Main owns location selection while Advanced and System own moved controls", () => {
+    const panel = readFileSync(join(root, "Panel.qml"), "utf8");
+    const main = panel.split("id: overviewPage")[1].split("id: advancedPage")[0];
+    const advanced = panel.split("id: advancedPage")[1].split("id: excludedPage")[0];
+    const system = panel.split("id: systemPage")[1];
+    assert.match(main, /Search exit location/);
+    assert.match(main, /RELAY FILTERS/);
+    assert.match(main, /Specific server/);
+    assert.match(main, /onLocationSelected:[\s\S]*?root\.chooseLocation\(location, true\)/);
+    assert.doesNotMatch(main, /PanelSectionHeader \{ text: "ACCOUNT"|PanelSectionHeader \{ text: "CONNECTION POLICY"/);
+    assert.match(advanced, /PanelSectionHeader \{ text: "CONNECTION POLICY"/);
+    assert.match(system, /PanelSectionHeader \{ text: "ACCOUNT"/);
 });
 
 test("diagnostic parsers return bounded plain text", () => {

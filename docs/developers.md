@@ -7,13 +7,13 @@
 | `manifest.json` | Declares the `service` and `bar-widget` entry points and keeps the service loaded across widget reloads. |
 | `Service.qml` | Owns shared Mullvad state, polling, the status listener, action queues, read-only System diagnostics, deadlines, output bounds, and excluded-process resolution. |
 | `BarWidget.qml` | Resolves only this plugin's service through the scoped bar facade, renders state, and loads `Panel.qml` while the service exists. |
-| `Panel.qml` | Implements Overview, Locations, Advanced, Excluded Apps, and the always-available read-only System page. It receives the service from `BarWidget.qml`; it does not search host registries. |
+| `Panel.qml` | Implements Main (search, favourites, recents, map, relay filters), Advanced (connection policy, DNS, anti-censorship), Excluded, and System (account and diagnostics). Main and System remain available without the CLI or daemon. It receives the service from `BarWidget.qml`; it does not search host registries. |
 | `Model.js` | Contains pure parsing, validation, redaction, grouping, bounded diagnostic parsing, desktop-entry search, recent-ID normalization, and fixed argv construction. |
-| `WorldMap.qml` / `NaturalEarthMap.qml` | Render the interactive offline Overview map and bundled 1:50m land and country-boundary shapes. |
+| `WorldMap.qml` / `NaturalEarthMap.qml` | Render the interactive offline Main map and bundled 1:50m land and country-boundary shapes. |
 | `scripts/mullvad-package-info` | Reads bounded metadata for the two allowlisted Mullvad packages from pacman's local database without running a package manager. |
 | `scripts/mullvad-update-check` | Runs only `checkupdates`, filters and bounds Mullvad results, and applies its own TERM/KILL timeout. |
 
-The System page is diagnostic only. It has no installer, package-update action, service mutation, privilege escalation, or application-launch path. Its package metadata read is local; its optional automatic/manual update check is the sole network-capable diagnostic.
+The System page contains account login and logout plus diagnostics. Account actions require a working Mullvad CLI and daemon, and login passes the account number over stdin without saving it. System has no installer, package-update action, privilege escalation, or application-launch path. Package metadata reads are local; the optional automatic/manual update check is the sole network-capable diagnostic.
 
 ## Omarchy 4.0.3 facade
 
@@ -47,7 +47,7 @@ The target is `halmylyseas.mullvad-vpn`. Besides panel navigation, status, tunne
 - `checkUpdates()`: invokes the debounced read-only update check and returns its current status. It does not install updates.
 - `systemInfo()`: JSON with `cliVersion`, `cliVersionSupported`, `lockdown`, `daemonVersion`, `daemonSupported`, `suggestedUpgrade`, `daemonRunning`, `daemonPid`, `packages`, `updateCheckStatus`, `updateCheckedAt`, `updateAvailable`, and `updateTargets`.
 
-The service stores update results as bounded display strings; IPC maps them back to `{ name, current, latest }` target objects. `updateAvailable` reflects the last successful results even after a failed check, so consumers must consult status and timestamp. Package objects preserve `name`, `version`, ISO UTC `installedAt`, and `buildAt`, and add `description`. Missing or invalid timestamps are empty strings. The local helper carries the original epoch fields alongside the panel's formatted install date so IPC does not round or reinterpret local time. The System page remains read-only.
+The service stores update results as bounded display strings; IPC maps them back to `{ name, current, latest }` target objects. `updateAvailable` reflects the last successful results even after a failed check, so consumers must consult status and timestamp. Package objects preserve `name`, `version`, ISO UTC `installedAt`, and `buildAt`, and add `description`. Missing or invalid timestamps are empty strings. The local helper carries the original epoch fields alongside the panel's formatted install date so IPC does not round or reinterpret local time. System diagnostics remain read-only.
 
 See [the threat model](threat-model.md) for trust boundaries and residual risks.
 

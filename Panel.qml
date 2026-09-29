@@ -20,7 +20,6 @@ Panel {
   property var service: null
 
   property int pageIndex: 0
-  property string locationQuery: ""
   property string appQuery: ""
   property var selectedLocation: null
   property var favoriteLocations: []
@@ -40,7 +39,7 @@ Panel {
     function onValuesChanged() { root.appCatalogueRevision++ }
   }
 
-  function pageAvailable(index) { return index === 0 || index === 4 || cliReady }
+  function pageAvailable(index) { return index === 0 || index === 3 || cliReady }
 
   readonly property color foreground: bar ? bar.foreground : Color.foreground
   readonly property color urgent: bar ? bar.urgent : Color.urgent
@@ -168,13 +167,16 @@ Panel {
     return locationKey(location)
   }
 
-  function filteredLocations() {
-    return Model.filterLocations(arrayFrom(service.locations, 512), locationQuery,
-                                 arrayFrom(favoriteLocations), service.relayConstraints)
+  function eligibleLocations() {
+    return Model.filterLocations(arrayFrom(service.locations, 512), "", [], service.relayConstraints)
+  }
+
+  function activeLocation() {
+    return selectedLocation || targetMapLocation()
   }
 
   function locationOptions() {
-    return Model.filterLocations(arrayFrom(service.locations, 512), "", [], service.relayConstraints).map(function(location) {
+    return eligibleLocations().map(function(location) {
       var servers = Model.filterServers(arrayFrom(location.servers), service.relayConstraints)
       var hints = []
       for (var i = 0; i < servers.length; i++)
@@ -185,18 +187,6 @@ Panel {
         description: locationKey(location) + (hints.length ? " · " + hints.join(" ") : "")
       }
     })
-  }
-
-  function favoriteOptions() {
-    var result = [{ value: "", label: "Choose favourite" }]
-    for (var i = 0; i < favoriteLocations.length; i++) {
-      var location = locationFor(favoriteLocations[i])
-      if (location) result.push({
-        value: locationKey(location),
-        label: String(i + 1) + ". " + location.city + ", " + location.country
-      })
-    }
-    return result
   }
 
   function serverOptions(location) {
@@ -331,18 +321,18 @@ Panel {
   }
 
   function showPage(index) {
-    var target = Math.max(0, Math.min(4, index))
+    var target = Math.max(0, Math.min(3, index))
     if (!pageAvailable(target)) return
-    if (target !== 3 || pageIndex !== 3) appQuery = ""
+    if (target !== 2 || pageIndex !== 2) appQuery = ""
     pageIndex = target
-    if (target === 3) service.refreshExcluded()
+    if (target === 2) service.refreshExcluded()
     Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
   }
 
   function movePage(delta) {
     var next = pageIndex
-    for (var i = 0; i < 5; i++) {
-      next = (next + delta + 5) % 5
+    for (var i = 0; i < 4; i++) {
+      next = (next + delta + 4) % 4
       if (pageAvailable(next)) { showPage(next); return }
     }
   }
@@ -352,7 +342,6 @@ Panel {
     else if (text === "2") showPage(1)
     else if (text === "3") showPage(2)
     else if (text === "4") showPage(3)
-    else if (text === "5") showPage(4)
     else if (text === "r" || text === "R") service.refreshAll()
     else if ((text === "t" || text === "T") && cliReady) service.toggleTunnel()
     else if ((text === "n" || text === "N") && cliReady) cycleFavorite(1)
@@ -419,7 +408,7 @@ Panel {
 
   Timer {
     interval: 5000
-    running: root.opened && root.pageIndex === 3
+    running: root.opened && root.pageIndex === 2
     repeat: true
     onTriggered: service.refreshExcluded()
   }
@@ -518,7 +507,7 @@ Panel {
           spacing: Style.spacing.xs
 
           Repeater {
-            model: ["Overview", "Locations", "Advanced", "Excluded", "System"]
+            model: ["Main", "Advanced", "Excluded", "System"]
             Button {
               required property string modelData
               required property int index
@@ -557,9 +546,8 @@ Panel {
             id: pageLoader
             width: pageFlick.width
             sourceComponent: root.pageIndex === 0 ? overviewPage
-              : root.pageIndex === 1 ? locationsPage
-              : root.pageIndex === 2 ? advancedPage
-              : root.pageIndex === 4 ? systemPage : excludedPage
+              : root.pageIndex === 1 ? advancedPage
+              : root.pageIndex === 3 ? systemPage : excludedPage
           }
         }
       }
@@ -594,8 +582,14 @@ Panel {
     id: overviewPage
 
     Column {
+      id: mainColumn
       width: pageFlick.width
       spacing: Style.space(12)
+      property bool filtersExpanded: false
+      readonly property bool filtersActive: ((service.relayConstraints || {}).providers || []).length > 0
+        || String((service.relayConstraints || {}).ownership || "any") !== "any"
+        || String((service.relayConstraints || {}).ipVersion || "any") !== "any"
+        || !!(service.relayConstraints || {}).multihop
       Keys.onEscapePressed: root.close()
 
       Item {
@@ -758,259 +752,43 @@ Panel {
         }
       }
 
-      BorderSurface {
-        id: relayMap
-        visible: root.cliReady
-        width: parent.width
-        height: Math.round(width * 0.62)
-        color: Util.alpha(root.foreground, 0.025)
-        borderSpec: Border.flat(Util.alpha(root.foreground, 0.16), Style.normalBorderWidth)
-        radius: Style.cornerRadius
-
-        WorldMap {
-          anchors.fill: parent
-          anchors.margins: Style.space(8)
-          locations: service.locations
-          selectedPoint: root.selectedLocation || root.targetMapLocation()
-          connectedPoint: root.connectedMapLocation()
-          foreground: root.foreground
-          accent: root.accent
-          onLocationSelected: function(location) {
-            root.chooseLocation(location, service.active)
-          }
-        }
-      }
-
-      OmaDropdown {
-        visible: root.cliReady && root.favoriteOptions().length > 1
-        width: parent.width
-        label: "Quick select favourite"
-        options: root.favoriteOptions()
-        value: root.isFavorite((service.relayConstraints || {}).location)
-          ? root.constraintKey((service.relayConstraints || {}).location) : ""
-        enabled: !service.busy
-        foreground: root.foreground
-        fontFamily: root.fontFamily
-        onChanged: function(value) {
-          var location = root.locationFromKey(value)
-          if (location) root.chooseLocation(location, true)
-        }
-      }
-
-      OmaSearchableDropdown {
-        width: parent.width
-        label: "Search exit location"
-        placeholderText: "Search country, city, provider, or relay"
-        triggerLabel: root.relayTargetLabel()
-        options: root.locationOptions()
-        value: root.constraintKey((service.relayConstraints || {}).location)
-        enabled: !service.busy && root.cliReady
-        opacity: root.cliReady ? 1 : 0.35
-        foreground: root.foreground
-        fontFamily: root.fontFamily
-        onChanged: function(value) {
-          var location = root.locationFromKey(value)
-          if (location) root.chooseLocation(location, service.active)
-        }
-      }
-
-      PanelSeparator { foreground: root.foreground }
-      PanelSectionHeader { text: "ACCOUNT"; foreground: root.foreground; fontFamily: root.fontFamily }
-
-      Column {
-        visible: !service.loggedIn
-        enabled: root.cliReady
-        opacity: root.cliReady ? 1 : 0.35
-        width: parent.width
-        spacing: Style.space(8)
-
-        Text {
-          textFormat: Text.PlainText
-          width: parent.width
-          text: "Your account number is sent to mullvad account login over stdin and is never saved by this plugin."
-          color: root.dim
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          wrapMode: Text.WordWrap
-        }
-
-        RowLayout {
-          width: parent.width
-          spacing: Style.space(8)
-
-          TextField {
-            id: accountField
-            Layout.fillWidth: true
-            password: true
-            foreground: root.foreground
-            placeholderText: "16-digit account number"
-            inputMethodHints: Qt.ImhDigitsOnly | Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
-            validator: RegularExpressionValidator { regularExpression: /[0-9 ]{0,19}/ }
-            onAccepted: loginButton.clicked()
-            Keys.onEscapePressed: {
-              text = ""
-              keyCatcher.forceActiveFocus()
-            }
-          }
-
-          Button {
-            id: loginButton
-            text: "Login"
-            bordered: true
-            focusable: true
-            enabled: service.installed && service.daemonRunning && !service.busy && accountField.text.trim() !== ""
-            foreground: root.foreground
-            onClicked: {
-              var account = accountField.text
-              accountField.text = ""
-              service.login(account)
-              account = ""
-            }
-          }
-        }
-      }
-
       RowLayout {
-        visible: service.loggedIn
         width: parent.width
         spacing: Style.space(8)
 
-        ColumnLayout {
+        OmaSearchableDropdown {
+          id: mainLocationSearch
           Layout.fillWidth: true
-          spacing: Style.space(2)
-          Text {
-            textFormat: Text.PlainText
-            Layout.fillWidth: true
-            text: "Logged in"
-            color: root.foreground
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.body
-            font.bold: true
-          }
-          Text {
-            textFormat: Text.PlainText
-            Layout.fillWidth: true
-            text: service.accountExpiry ? "Credit expires " + service.accountExpiry : "Account credit expiry unavailable"
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-          }
-        }
-        Button {
-          text: "Logout"
-          focusable: true
-          bordered: true
+          label: "Search exit location"
+          showLabel: false
+          placeholderText: "Search country, city, provider, or relay"
+          triggerLabel: "Search exit location"
+          options: root.locationOptions()
+          value: ""
           enabled: !service.busy && root.cliReady
-          foreground: root.urgent
-          onClicked: root.confirmAction("Log out of the Mullvad account on this device?", function() { service.logout() })
-        }
-      }
-
-      PanelSeparator { foreground: root.foreground }
-      PanelSectionHeader { text: "CONNECTION POLICY"; foreground: root.foreground; fontFamily: root.fontFamily }
-
-      Toggle {
-        width: parent.width
-        label: "Lockdown mode"
-        description: "Block all network access whenever Mullvad is disconnected"
-        checked: service.lockdown
-        enabled: !service.busy && root.cliReady
-        opacity: root.cliReady ? 1 : 0.35
-        foreground: root.foreground
-        fontFamily: root.fontFamily
-        onClicked: service.setLockdown(!service.lockdown)
-      }
-      Toggle {
-        width: parent.width
-        label: "Auto-connect"
-        description: "Connect Mullvad when its daemon starts"
-        checked: service.autoConnect
-        enabled: !service.busy && root.cliReady
-        opacity: root.cliReady ? 1 : 0.35
-        foreground: root.foreground
-        fontFamily: root.fontFamily
-        onClicked: service.setAutoConnect(!service.autoConnect)
-      }
-      Toggle {
-        width: parent.width
-        label: "Local network sharing"
-        description: "Allow access to devices on the local network"
-        checked: service.lanSharing
-        enabled: !service.busy && root.cliReady
-        opacity: root.cliReady ? 1 : 0.35
-        foreground: root.foreground
-        fontFamily: root.fontFamily
-        onClicked: service.setLanSharing(!service.lanSharing)
-      }
-
-      Text {
-        textFormat: Text.PlainText
-        width: parent.width
-        text: "Keys: 1–4 pages · T tunnel · R refresh · N/P favourites · H/L pages · J/K scroll"
-        color: root.dim
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
-        wrapMode: Text.WordWrap
-      }
-    }
-  }
-
-  Component {
-    id: locationsPage
-
-    Column {
-      id: locationsColumn
-      width: pageFlick.width
-      spacing: Style.space(12)
-      property var filtered: root.filteredLocations()
-      property bool filtersExpanded: false
-      readonly property bool filtersActive: ((service.relayConstraints || {}).providers || []).length > 0
-        || String((service.relayConstraints || {}).ownership || "any") !== "any"
-        || String((service.relayConstraints || {}).ipVersion || "any") !== "any"
-        || !!(service.relayConstraints || {}).multihop
-      Keys.onEscapePressed: root.close()
-
-      PanelHero {
-        width: parent.width
-        title: "Location controls"
-        meta: "Manage favourites and fine-tune relay selection"
-        foreground: root.foreground
-        fontFamily: root.fontFamily
-        iconComponent: Component {
-          ThemeIcon { iconSize: Style.font.display; state: "location"; color: root.foreground; urgentColor: root.urgent }
-        }
-      }
-
-      RowLayout {
-        width: parent.width
-        spacing: Style.space(8)
-
-        TextField {
-          id: locationSearch
-          Layout.fillWidth: true
+          opacity: root.cliReady ? 1 : 0.35
           foreground: root.foreground
-          placeholderText: "Search country, city, provider, or server"
-          text: root.locationQuery
-          onTextChanged: root.locationQuery = text
-          Keys.onEscapePressed: {
-            text = ""
-            keyCatcher.forceActiveFocus()
+          fontFamily: root.fontFamily
+          onChanged: function(value) {
+            var location = root.locationFromKey(value)
+            if (location) root.chooseLocation(location, true)
           }
         }
 
         Button {
           Layout.preferredWidth: Style.space(112)
-          text: locationsColumn.filtersExpanded ? "Hide filters" : "Filters"
-          selected: locationsColumn.filtersExpanded || locationsColumn.filtersActive
+          text: mainColumn.filtersExpanded ? "Hide filters" : "Filters"
+          selected: mainColumn.filtersExpanded || mainColumn.filtersActive
           bordered: true
           focusable: true
+          enabled: root.cliReady
           foreground: root.foreground
-          onClicked: locationsColumn.filtersExpanded = !locationsColumn.filtersExpanded
+          onClicked: mainColumn.filtersExpanded = !mainColumn.filtersExpanded
         }
       }
 
       Column {
-        visible: locationsColumn.filtersExpanded
+        visible: mainColumn.filtersExpanded
         width: parent.width
         spacing: Style.space(8)
 
@@ -1090,241 +868,145 @@ Panel {
         }
       }
 
-      PanelSeparator { foreground: root.foreground }
-      PanelSectionHeader { text: "COUNTRIES & CITIES"; foreground: root.foreground; fontFamily: root.fontFamily }
-
       Text {
         textFormat: Text.PlainText
-        visible: locationsColumn.filtered.length === 0
+        visible: root.cliReady && service.locations.length === 0
         width: parent.width
-        text: service.locations.length === 0 ? "Loading Mullvad relay locations…" : "No locations match your search."
+        text: "Loading Mullvad relay locations…"
         color: root.dim
         font.family: root.fontFamily
-        font.pixelSize: Style.font.body
-        horizontalAlignment: Text.AlignHCenter
-      }
-
-      ListView {
-        id: locationList
-        width: parent.width
-        height: Math.min(contentHeight, Style.space(240))
-        spacing: Style.space(5)
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        interactive: contentHeight > height
-        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-        model: locationsColumn.filtered
-        delegate: LocationRow {
-          required property var modelData
-          required property int index
-          width: ListView.view.width
-          height: implicitHeight
-          location: modelData
-          favorite: root.isFavorite(modelData)
-          selected: root.selectedLocation && root.locationKey(root.selectedLocation) === root.locationKey(modelData)
-          onActiveFocusChanged: if (activeFocus) locationList.positionViewAtIndex(index, ListView.Contain)
-          onChosen: root.chooseLocation(location, service.active)
-          onFavoriteToggled: root.toggleFavorite(location)
-        }
-      }
-
-      PanelSeparator { foreground: root.foreground }
-      PanelSectionHeader { text: "SELECTED RELAY"; foreground: root.foreground; fontFamily: root.fontFamily }
-
-      Text {
-        textFormat: Text.PlainText
-        width: parent.width
-        text: root.selectedLocation
-          ? root.selectedLocation.city + ", " + root.selectedLocation.country
-          : "Select a city above to choose a specific server."
-        color: root.selectedLocation ? root.foreground : root.dim
-        font.family: root.fontFamily
         font.pixelSize: Style.font.bodySmall
-        wrapMode: Text.WordWrap
-      }
-
-      OmaSearchableDropdown {
-        visible: root.selectedLocation !== null
-        width: parent.width
-        label: "Specific server"
-        placeholderText: "Search hostname or provider"
-        options: root.serverOptions(root.selectedLocation)
-        value: root.selectedServerValue(root.selectedLocation)
-        enabled: !service.busy
-        foreground: root.foreground
-        fontFamily: root.fontFamily
-        onChanged: function(value) {
-          var location = root.selectedLocation
-          if (location) service.selectLocation(location.countryCode, location.cityCode,
-                                                service.active, value)
-        }
       }
 
       Column {
-        visible: root.recentLocations.length > 0
+        visible: root.cliReady && root.favoriteLocations.length > 0
         width: parent.width
         spacing: Style.space(6)
-        PanelSeparator { foreground: root.foreground }
-        PanelSectionHeader { text: "RECENT"; foreground: root.foreground; fontFamily: root.fontFamily }
-        Repeater {
-          model: root.recentLocations
-          SavedLocationRow {
-            required property var modelData
-            width: parent.width
-            location: modelData
-            prefix: "󰋚"
-            available: root.locationFor(modelData) !== null
-            subtitle: available ? "Use this relay" : "Relay no longer available"
-            onChosen: if (available) root.chooseLocation(root.locationFor(location), service.active)
+        PanelSectionHeader { text: "FAVOURITES"; foreground: root.foreground; fontFamily: root.fontFamily }
+        Flow {
+          width: parent.width
+          spacing: Style.space(6)
+          Repeater {
+            model: root.favoriteLocations
+            Button {
+              required property var modelData
+              required property int index
+              text: String(index + 1) + ". " + String(modelData.city || modelData.cityCode)
+              bordered: true
+              focusable: true
+              enabled: !service.busy && root.locationFor(modelData) !== null
+                && root.eligibleLocations().some(function(item) { return root.locationKey(item) === root.locationKey(modelData) })
+              selected: root.locationKey(root.activeLocation()) === root.locationKey(modelData)
+              foreground: root.foreground
+              onClicked: root.chooseLocation(modelData, true)
+            }
           }
         }
       }
 
-    }
-  }
+      BorderSurface {
+        id: relayMap
+        visible: root.cliReady
+        width: parent.width
+        height: Math.round(width * 0.62)
+        color: Util.alpha(root.foreground, 0.025)
+        borderSpec: Border.flat(Util.alpha(root.foreground, 0.16), Style.normalBorderWidth)
+        radius: Style.cornerRadius
 
-  component SavedLocationRow: CursorSurface {
-    id: savedRow
-    property var location: null
-    property string prefix: ""
-    property bool available: true
-    property string subtitle: ""
-    signal chosen()
+        WorldMap {
+          anchors.fill: parent
+          anchors.margins: Style.space(8)
+          locations: root.eligibleLocations()
+          selectedPoint: root.activeLocation()
+          connectedPoint: root.connectedMapLocation()
+          foreground: root.foreground
+          accent: root.accent
+          onLocationSelected: function(location) {
+            root.chooseLocation(location, true)
+          }
+        }
+      }
 
-    foreground: root.foreground
-    activeFocusOnTab: true
-    hasCursor: activeFocus
-    opacity: available ? 1 : 0.55
-    implicitHeight: savedContent.implicitHeight + Style.space(14)
-    Keys.onReturnPressed: if (available && !service.busy) chosen()
-    Keys.onEnterPressed: if (available && !service.busy) chosen()
-    Keys.onSpacePressed: if (available && !service.busy) chosen()
+      Column {
+        visible: root.cliReady && root.activeLocation() !== null
+        width: parent.width
+        spacing: Style.space(8)
+        PanelSeparator { foreground: root.foreground }
+        PanelSectionHeader { text: "SELECTED RELAY"; foreground: root.foreground; fontFamily: root.fontFamily }
+        RowLayout {
+          width: parent.width
+          spacing: Style.space(8)
+          Text {
+            textFormat: Text.PlainText
+            Layout.fillWidth: true
+            text: root.activeLocation()
+              ? root.activeLocation().city + ", " + root.activeLocation().country : ""
+            color: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+            font.bold: true
+            elide: Text.ElideRight
+          }
+          PanelActionButton {
+            iconText: root.isFavorite(root.activeLocation()) ? "󰋑" : "󰋕"
+            tooltipText: root.isFavorite(root.activeLocation()) ? "Remove favourite"
+              : root.favoriteLocations.length >= 9 ? "Nine favourites already saved" : "Add favourite"
+            foreground: root.isFavorite(root.activeLocation()) ? root.foreground : root.dim
+            enabled: root.isFavorite(root.activeLocation()) || root.favoriteLocations.length < 9
+            fontFamily: root.fontFamily
+            focusable: true
+            onClicked: root.toggleFavorite(root.activeLocation())
+          }
+        }
+        OmaSearchableDropdown {
+          width: parent.width
+          label: "Specific server"
+          placeholderText: "Search hostname or provider"
+          options: root.serverOptions(root.activeLocation())
+          value: root.selectedServerValue(root.activeLocation())
+          enabled: !service.busy
+          foreground: root.foreground
+          fontFamily: root.fontFamily
+          onChanged: function(value) {
+            var location = root.activeLocation()
+            if (location) service.selectLocation(location.countryCode, location.cityCode, true, value)
+          }
+        }
+      }
 
-    RowLayout {
-      id: savedContent
-      anchors.left: parent.left
-      anchors.right: parent.right
-      anchors.verticalCenter: parent.verticalCenter
-      anchors.leftMargin: Style.space(8)
-      anchors.rightMargin: Style.space(8)
-      spacing: Style.space(8)
+      Column {
+        visible: root.cliReady && root.recentLocations.length > 0
+        width: parent.width
+        spacing: Style.space(6)
+        PanelSectionHeader { text: "RECENT"; foreground: root.foreground; fontFamily: root.fontFamily }
+        Flow {
+          width: parent.width
+          spacing: Style.space(6)
+          Repeater {
+            model: root.recentLocations
+            Button {
+              required property var modelData
+              text: String(modelData.city || modelData.cityCode)
+              bordered: true
+              focusable: true
+              enabled: !service.busy && root.locationFor(modelData) !== null
+                && root.eligibleLocations().some(function(item) { return root.locationKey(item) === root.locationKey(modelData) })
+              foreground: root.foreground
+              onClicked: root.chooseLocation(modelData, true)
+            }
+          }
+        }
+      }
 
       Text {
         textFormat: Text.PlainText
-        text: savedRow.prefix
-        color: savedRow.available ? root.foreground : root.urgent
+        width: parent.width
+        text: "Keys: 1–4 pages · T tunnel · R refresh · N/P favourites · H/L pages · J/K scroll"
+        color: root.dim
         font.family: root.fontFamily
-        font.pixelSize: Style.font.body
-        Layout.preferredWidth: Style.space(22)
-        horizontalAlignment: Text.AlignHCenter
+        font.pixelSize: Style.font.caption
+        wrapMode: Text.WordWrap
       }
-      ColumnLayout {
-        Layout.fillWidth: true
-        spacing: Style.space(1)
-        Text {
-          textFormat: Text.PlainText
-          Layout.fillWidth: true
-          text: savedRow.location ? String(savedRow.location.city || savedRow.location.cityCode) + ", " + String(savedRow.location.country || savedRow.location.countryCode) : "Unknown"
-          color: root.foreground
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.body
-          elide: Text.ElideRight
-        }
-        Text {
-          textFormat: Text.PlainText
-          Layout.fillWidth: true
-          text: savedRow.subtitle
-          color: savedRow.available ? root.dim : root.urgent
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          elide: Text.ElideRight
-        }
-      }
-    }
-
-    MouseArea {
-      anchors.fill: parent
-      enabled: savedRow.available && !service.busy
-      cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-      onClicked: savedRow.chosen()
-    }
-  }
-
-  component LocationRow: CursorSurface {
-    id: locationRow
-    property var location: null
-    property bool favorite: false
-    property bool selected: false
-    signal chosen()
-    signal favoriteToggled()
-
-    foreground: root.foreground
-    activeFocusOnTab: true
-    hasCursor: activeFocus
-    current: selected
-    implicitHeight: locationContent.implicitHeight + Style.space(12)
-    Keys.onReturnPressed: if (!service.busy) chosen()
-    Keys.onEnterPressed: if (!service.busy) chosen()
-    Keys.onSpacePressed: if (!service.busy) chosen()
-
-    RowLayout {
-      id: locationContent
-      anchors.left: parent.left
-      anchors.right: parent.right
-      anchors.verticalCenter: parent.verticalCenter
-      anchors.leftMargin: Style.space(8)
-      anchors.rightMargin: Style.space(8)
-      spacing: Style.space(8)
-
-      Text {
-        textFormat: Text.PlainText
-        text: "󰖂"
-        color: locationRow.selected ? root.foreground : root.dim
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
-        Layout.preferredWidth: Style.space(22)
-        horizontalAlignment: Text.AlignHCenter
-      }
-      ColumnLayout {
-        Layout.fillWidth: true
-        spacing: Style.space(1)
-        Text {
-          textFormat: Text.PlainText
-          Layout.fillWidth: true
-          text: locationRow.location ? String(locationRow.location.city || "Any city") + ", " + String(locationRow.location.country || "") : "Unknown"
-          color: root.foreground
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.body
-          font.bold: locationRow.selected
-          elide: Text.ElideRight
-        }
-        Text {
-          textFormat: Text.PlainText
-          Layout.fillWidth: true
-          text: locationRow.location ? root.locationKey(locationRow.location) + (locationRow.location.servers ? " · " + locationRow.location.servers.length + " relays" : "") : ""
-          color: root.dim
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          elide: Text.ElideRight
-        }
-      }
-      PanelActionButton {
-        iconText: locationRow.favorite ? "󰋑" : "󰋕"
-        tooltipText: locationRow.favorite ? "Remove favourite" : (root.favoriteLocations.length >= 9 ? "Nine favourites already saved" : "Add favourite")
-        foreground: locationRow.favorite ? root.foreground : root.dim
-        enabled: locationRow.favorite || root.favoriteLocations.length < 9
-        fontFamily: root.fontFamily
-        focusable: true
-        onClicked: locationRow.favoriteToggled()
-      }
-    }
-
-    MouseArea {
-      anchors.fill: parent
-      anchors.rightMargin: Style.space(42)
-      enabled: !service.busy
-      cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-      onClicked: locationRow.chosen()
     }
   }
 
@@ -1341,12 +1023,49 @@ Panel {
       PanelHero {
         width: parent.width
         title: "Advanced settings"
-        meta: "DNS and anti-censorship"
+        meta: "Connection policy, DNS, and anti-censorship"
         foreground: root.foreground
         fontFamily: root.fontFamily
         iconComponent: Component {
           ThemeIcon { iconSize: Style.font.display; state: "advanced"; color: root.foreground; urgentColor: root.urgent }
         }
+      }
+
+      PanelSeparator { foreground: root.foreground }
+      PanelSectionHeader { text: "CONNECTION POLICY"; foreground: root.foreground; fontFamily: root.fontFamily }
+
+      Toggle {
+        width: parent.width
+        label: "Lockdown mode"
+        description: "Block all network access whenever Mullvad is disconnected"
+        checked: service.lockdown
+        enabled: !service.busy && root.cliReady
+        opacity: root.cliReady ? 1 : 0.35
+        foreground: root.foreground
+        fontFamily: root.fontFamily
+        onClicked: service.setLockdown(!service.lockdown)
+      }
+      Toggle {
+        width: parent.width
+        label: "Auto-connect"
+        description: "Connect Mullvad when its daemon starts"
+        checked: service.autoConnect
+        enabled: !service.busy && root.cliReady
+        opacity: root.cliReady ? 1 : 0.35
+        foreground: root.foreground
+        fontFamily: root.fontFamily
+        onClicked: service.setAutoConnect(!service.autoConnect)
+      }
+      Toggle {
+        width: parent.width
+        label: "Local network sharing"
+        description: "Allow access to devices on the local network"
+        checked: service.lanSharing
+        enabled: !service.busy && root.cliReady
+        opacity: root.cliReady ? 1 : 0.35
+        foreground: root.foreground
+        fontFamily: root.fontFamily
+        onClicked: service.setLanSharing(!service.lanSharing)
       }
 
       PanelSeparator { foreground: root.foreground }
@@ -1588,11 +1307,103 @@ Panel {
       PanelHero {
         width: parent.width
         title: "Mullvad system"
-        meta: "Read-only local diagnostics"
+        meta: "Account and local diagnostics"
         foreground: root.foreground
         fontFamily: root.fontFamily
         iconComponent: Component {
           ThemeIcon { iconSize: Style.font.display; state: "system"; color: root.foreground; urgentColor: root.urgent }
+        }
+      }
+
+      PanelSeparator { foreground: root.foreground }
+      PanelSectionHeader { text: "ACCOUNT"; foreground: root.foreground; fontFamily: root.fontFamily }
+
+      Column {
+        visible: !service.loggedIn
+        enabled: root.cliReady
+        opacity: root.cliReady ? 1 : 0.35
+        width: parent.width
+        spacing: Style.space(8)
+
+        Text {
+          textFormat: Text.PlainText
+          width: parent.width
+          text: "Your account number is sent to mullvad account login over stdin and is never saved by this plugin."
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          wrapMode: Text.WordWrap
+        }
+
+        RowLayout {
+          width: parent.width
+          spacing: Style.space(8)
+
+          TextField {
+            id: accountField
+            Layout.fillWidth: true
+            password: true
+            foreground: root.foreground
+            placeholderText: "16-digit account number"
+            inputMethodHints: Qt.ImhDigitsOnly | Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
+            validator: RegularExpressionValidator { regularExpression: /[0-9 ]{0,19}/ }
+            onAccepted: loginButton.clicked()
+            Keys.onEscapePressed: {
+              text = ""
+              keyCatcher.forceActiveFocus()
+            }
+          }
+
+          Button {
+            id: loginButton
+            text: "Login"
+            bordered: true
+            focusable: true
+            enabled: service.installed && service.daemonRunning && !service.busy && accountField.text.trim() !== ""
+            foreground: root.foreground
+            onClicked: {
+              var account = accountField.text
+              accountField.text = ""
+              service.login(account)
+              account = ""
+            }
+          }
+        }
+      }
+
+      RowLayout {
+        visible: service.loggedIn
+        width: parent.width
+        spacing: Style.space(8)
+
+        ColumnLayout {
+          Layout.fillWidth: true
+          spacing: Style.space(2)
+          Text {
+            textFormat: Text.PlainText
+            Layout.fillWidth: true
+            text: "Logged in"
+            color: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+            font.bold: true
+          }
+          Text {
+            textFormat: Text.PlainText
+            Layout.fillWidth: true
+            text: service.accountExpiry ? "Credit expires " + service.accountExpiry : "Account credit expiry unavailable"
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+        }
+        Button {
+          text: "Logout"
+          focusable: true
+          bordered: true
+          enabled: !service.busy && root.cliReady
+          foreground: root.urgent
+          onClicked: root.confirmAction("Log out of the Mullvad account on this device?", function() { service.logout() })
         }
       }
 
