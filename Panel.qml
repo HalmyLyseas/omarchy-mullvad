@@ -660,6 +660,8 @@ Panel {
         wrapMode: Text.WordWrap
       }
 
+      PanelSeparator { foreground: root.foreground }
+
       Text {
         objectName: "overviewActionStatus"
         textFormat: Text.PlainText
@@ -1223,16 +1225,7 @@ Panel {
         }
       }
 
-      Text {
-        textFormat: Text.PlainText
-        width: parent.width
-        text: "Apps launched here use mullvad-exclude and remain excluded until their processes exit."
-        color: root.dim
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.bodySmall
-        wrapMode: Text.WordWrap
-      }
-
+      PanelSeparator { foreground: root.foreground }
       PanelSectionHeader { text: "RUNNING OUTSIDE VPN"; foreground: root.foreground; fontFamily: root.fontFamily }
 
       Text {
