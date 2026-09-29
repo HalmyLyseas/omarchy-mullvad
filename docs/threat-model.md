@@ -1,6 +1,6 @@
 # Threat model
 
-Scope: `halmylyseas.oma-mullvad`, an Omarchy shell plugin using the local Mullvad CLI. The mandatory development and execution rules are in [CONTRIBUTING.md](../CONTRIBUTING.md); [developer notes](developers.md) describe the architecture and validation gates.
+Scope: `halmylyseas.omarchy-mullvad`, an Omarchy shell plugin using the local Mullvad CLI. The mandatory development and execution rules are in [CONTRIBUTING.md](../CONTRIBUTING.md); [developer notes](developers.md) describe the architecture and validation gates.
 
 ## Assets
 

@@ -9,7 +9,7 @@ const root = join(__dirname, "..");
 const collector = join(root, "tests/probe/collect-result");
 
 function collect(log, status = 0) {
-    const scratch = mkdtempSync(join(tmpdir(), "oma-mullvad-probe-result-"));
+    const scratch = mkdtempSync(join(tmpdir(), "omarchy-mullvad-probe-result-"));
     const path = join(scratch, "probe.log");
     writeFileSync(path, log);
     const result = spawnSync("bash", [collector, path, String(status)], { encoding: "utf8" });

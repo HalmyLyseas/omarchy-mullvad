@@ -22,10 +22,10 @@ ShellRoot {
     property string lastUpdateId: ""
     property var lastUpdatePayload: null
     function serviceFor(id) {
-      return id === "halmylyseas.oma-mullvad" ? serviceInstance : null
+      return id === "halmylyseas.omarchy-mullvad" ? serviceInstance : null
     }
     function updateEntryInline(id, entry) {
-      if (id !== "halmylyseas.oma-mullvad") return
+      if (id !== "halmylyseas.omarchy-mullvad") return
       lastUpdateId = id
       lastUpdatePayload = entry
     }
@@ -144,7 +144,7 @@ ShellRoot {
         widgetLoader.active = false
         reloadWait.start()
       } else finish("", {
-        sameService: shell.serviceFor("halmylyseas.oma-mullvad") === originalService,
+        sameService: shell.serviceFor("halmylyseas.omarchy-mullvad") === originalService,
         panelServiceMatches: widget._probePanelItem && widget._probePanelItem.service === originalService
       })
     } else if (scenario === "replacement-bar") {
@@ -153,16 +153,16 @@ ShellRoot {
     } else if (scenario === "facade-contract") {
       shell.updateEntryInline("foreign.plugin", { value: 1 })
       var foreignIgnored = shell.lastUpdateId === ""
-      shell.updateEntryInline("halmylyseas.oma-mullvad", { refreshIntervalSec: 45 })
+      shell.updateEntryInline("halmylyseas.omarchy-mullvad", { refreshIntervalSec: 45 })
       bar.requestPopout(widget)
       var popupOwned = bar.activePopout === widget
       bar.releasePopout(widget)
       finish("", {
-        ownService: shell.serviceFor("halmylyseas.oma-mullvad") === service,
+        ownService: shell.serviceFor("halmylyseas.omarchy-mullvad") === service,
         foreignServiceNull: shell.serviceFor("foreign.plugin") === null,
         appLibraryNull: shell.appLibrary === null,
         foreignUpdateIgnored: foreignIgnored,
-        ownUpdateRecorded: shell.lastUpdateId === "halmylyseas.oma-mullvad",
+        ownUpdateRecorded: shell.lastUpdateId === "halmylyseas.omarchy-mullvad",
         scalarPropertiesUsable: widget.foreground === bar.foreground && widget.barForeground === bar.barForeground,
         popupOwned: popupOwned,
         popupReleased: bar.activePopout === null
@@ -201,7 +201,7 @@ ShellRoot {
         root.finish("", {
           selectedPage: cataloguePanel.pageIndex,
           appLibraryNull: shell.appLibrary === null,
-          ownService: shell.serviceFor("halmylyseas.oma-mullvad") === service,
+          ownService: shell.serviceFor("halmylyseas.omarchy-mullvad") === service,
           foreignServiceNull: shell.serviceFor("foreign.plugin") === null,
           excludedMetadataCount: cataloguePanel.excludedApps().length,
           emptyText: cataloguePanel.appEmptyText

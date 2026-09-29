@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Rename the fork repository to `omarchy-mullvad` to match the other Omarchy plugins; keep the existing plugin ID so installed settings and keybindings remain valid.
+- Rename the fork repository and display name to Omarchy Mullvad, with plugin ID `halmylyseas.omarchy-mullvad`.
+- Document the manual settings and keybinding switch from the earlier fork and upstream plugin IDs.
 
 ## 1.5.0
 

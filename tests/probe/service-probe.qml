@@ -55,7 +55,7 @@ ShellRoot {
         if (root.scenario === "removed" && !root.removedRefreshStarted) {
           root.removedRefreshStarted = true
           root.elapsed = 0
-          root.service._enqueueRead("probe", ["/definitely/missing/oma-mullvad-test"])
+          root.service._enqueueRead("probe", ["/definitely/missing/omarchy-mullvad-test"])
           start()
         } else if (root.scenario === "output-buffers") {
           root.finish(root.checkOutputBuffers())
