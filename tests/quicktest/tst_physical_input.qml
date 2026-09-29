@@ -187,6 +187,17 @@ Item {
       return null
     }
 
+    function findItemWithLabel(item, label) {
+      if (!item) return null
+      if (item.label === label && typeof item.focusTrigger === "function") return item
+      var children = item.children || []
+      for (var i = 0; i < children.length; i++) {
+        var found = findItemWithLabel(children[i], label)
+        if (found) return found
+      }
+      return null
+    }
+
     function test_dns_apply_dispatches_raw_string_to_service() {
       var panel = createTemporaryObject(panelComponent, scene)
       panel.showPage(2)
@@ -350,6 +361,49 @@ Item {
       compare(mapSpy.signalArguments[0][0].value, "origin")
     }
 
+    function test_world_map_wheel_zoom_keeps_cursor_anchor_and_drag_pans() {
+      var map = createTemporaryObject(mapComponent, scene, { x: 30, y: 30 })
+      verify(map !== null)
+      waitForRendering(map)
+      var before = map.screenToWorld(340, 115)
+      mouseWheel(map, 340, 115, 0, 120)
+      verify(map.zoomLevel > 1)
+      var after = map.screenToWorld(340, 115)
+      verify(Math.abs(before.x - after.x) < 0.5)
+      verify(Math.abs(before.y - after.y) < 0.5)
+      var center = map.centerX
+      mouseDrag(map, 120, 180, 80, 0, Qt.LeftButton)
+      verify(map.centerX < center)
+    }
+
+    function test_world_map_markers_allow_zoom_and_drag_without_selection() {
+      var map = createTemporaryObject(mapComponent, scene, { x: 30, y: 30 })
+      verify(map !== null)
+      mapSpy.target = map
+      waitForRendering(map)
+      var marker = map._probeMarkerHitTarget(0)
+      verify(marker !== null)
+      mouseWheel(marker, marker.width / 2, marker.height / 2, 0, 120)
+      verify(map.zoomLevel > 1)
+      var center = map.centerX
+      mouseDrag(marker, marker.width / 2, marker.height / 2, 45, 0, Qt.LeftButton)
+      verify(map.centerX < center)
+      compare(mapSpy.count, 0)
+    }
+
+    function test_world_map_selected_location_flies_out_then_in() {
+      var map = createTemporaryObject(mapComponent, scene, { x: 30, y: 30 })
+      verify(map !== null)
+      map.selectedPoint = { latitude: 48.8566, longitude: 2.3522 }
+      tryCompare(map, "zoomLevel", map.focusZoom, 2000)
+      map.selectedPoint = { latitude: 40.7128, longitude: -74.0060 }
+      wait(180)
+      verify(map.zoomLevel < map.focusZoom)
+      tryCompare(map, "zoomLevel", map.focusZoom, 2000)
+      verify(Math.abs(map.centerX - map.pointX(map.selectedPoint)) < 0.5)
+      verify(Math.abs(map.centerY - map.pointY(map.selectedPoint)) < 0.5)
+    }
+
     function test_panel_world_map_pointer_selection_reaches_inert_service() {
       fakeService.locations = [{
         countryCode: "se", cityCode: "got", country: "Sweden", city: "Gothenburg",
@@ -367,6 +421,32 @@ Item {
       compare(fakeService.selectedCountry, "se")
       compare(fakeService.selectedCity, "got")
       compare(panel.selectedLocation.cityCode, "got")
+      tryCompare(map, "zoomLevel", map.focusZoom, 2000)
+      verify(Math.abs(map.centerX - map.pointX(panel.selectedLocation)) < 0.5)
+    }
+
+    function test_panel_favourite_selection_moves_world_map() {
+      var paris = { countryCode: "fr", cityCode: "par", country: "France", city: "Paris",
+                    latitude: 48.8566, longitude: 2.3522, servers: [] }
+      var newYork = { countryCode: "us", cityCode: "nyc", country: "United States", city: "New York",
+                      latitude: 40.7128, longitude: -74.0060, servers: [] }
+      fakeService.locations = [paris, newYork]
+      var panel = createTemporaryObject(panelComponent, scene)
+      verify(panel !== null)
+      panel.favoriteLocations = [newYork]
+      var map = findWorldMap(panel._probePageItem)
+      var favourite = findItemWithLabel(panel._probePageItem, "Quick select favourite")
+      verify(map !== null)
+      verify(favourite !== null)
+      favourite.focusTrigger()
+      keyClick(Qt.Key_Space)
+      tryCompare(favourite, "popupOpen", true)
+      keyClick(Qt.Key_Down)
+      keyClick(Qt.Key_Return)
+      tryCompare(fakeService, "selectCount", 1)
+      compare(panel.selectedLocation.cityCode, "nyc")
+      tryCompare(map, "zoomLevel", map.focusZoom, 2000)
+      verify(Math.abs(map.centerX - map.pointX(newYork)) < 0.5)
     }
   }
 }

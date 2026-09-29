@@ -762,7 +762,7 @@ Panel {
         id: relayMap
         visible: root.cliReady
         width: parent.width
-        height: Math.round(width * 0.50)
+        height: Math.round(width * 0.62)
         color: Util.alpha(root.foreground, 0.025)
         borderSpec: Border.flat(Util.alpha(root.foreground, 0.16), Style.normalBorderWidth)
         radius: Style.cornerRadius
@@ -771,7 +771,7 @@ Panel {
           anchors.fill: parent
           anchors.margins: Style.space(8)
           locations: service.locations
-          selectedPoint: root.targetMapLocation()
+          selectedPoint: root.selectedLocation || root.targetMapLocation()
           connectedPoint: root.connectedMapLocation()
           foreground: root.foreground
           accent: root.accent

@@ -9,6 +9,7 @@
 | `BarWidget.qml` | Resolves only this plugin's service through the scoped bar facade, renders state, and loads `Panel.qml` while the service exists. |
 | `Panel.qml` | Implements Overview, Locations, Advanced, Excluded Apps, and the always-available read-only System page. It receives the service from `BarWidget.qml`; it does not search host registries. |
 | `Model.js` | Contains pure parsing, validation, redaction, grouping, bounded diagnostic parsing, desktop-entry search, recent-ID normalization, and fixed argv construction. |
+| `WorldMap.qml` / `NaturalEarthMap.qml` | Render the interactive offline Overview map and bundled 1:50m land and country-boundary shapes. |
 | `scripts/mullvad-package-info` | Reads bounded metadata for the two allowlisted Mullvad packages from pacman's local database without running a package manager. |
 | `scripts/mullvad-update-check` | Runs only `checkupdates`, filters and bounds Mullvad results, and applies its own TERM/KILL timeout. |
 
@@ -21,6 +22,8 @@ A third-party `bar-widget` receives a scoped facade. `serviceFor("halmylyseas.mu
 Excluded-app discovery uses the public Quickshell `DesktopEntries` catalogue. Search scans at most 4,096 entries, caps keyword count at 64, and bounds every searchable field before concatenation. Standard `noDisplay` entries are filtered. Omarchy's private launcher-hide configuration is not available through the scoped facade. Empty search shows resolved recent desktop IDs, while a non-empty query searches the bounded local catalogue. Launch execution remains the fixed argv returned by `Model.argv("launchExcluded", ...)`; safe desktop IDs may contain spaces and parentheses, while path syntax and shell metacharacters remain rejected. The panel persists the recent ID and closes only when the service reports that dispatch succeeded.
 
 Settings persistence clones the current inline settings and replaces only favourites, recent locations, and recent excluded desktop IDs. This preserves unrelated values such as `refreshIntervalSec`.
+
+The map's 1000×500 equirectangular geometry comes from Natural Earth's public-domain 1:50m land and international-boundary GeoJSON. `python scripts/generate-map-shapes.py` regenerates `NaturalEarthMap.qml` from a pinned Natural Earth vector commit, simplifying coordinates by 0.3 map units; the network is used only when regenerating source data. Runtime map interactions do not fetch tiles or geocode locations. `WorldMap.qml` keeps the camera between the world view and 10× zoom, and the target-location animation returns to 6× zoom. Markers remain screen-sized while the map pans and scales.
 
 ## Service and widget lifecycle
 

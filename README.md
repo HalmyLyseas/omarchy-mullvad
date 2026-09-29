@@ -11,7 +11,7 @@ Mullvad VPN controls for the Omarchy Quattro bar.
 - Configure DNS, anti-censorship, LAN sharing, and lockdown mode
 - Discover installed applications and launch them outside the VPN
 - Group related excluded processes by launched application
-- View Mullvad relay cities on a world map
+- Explore eligible Mullvad relay cities on an offline, zoomable world map
 - Inspect bounded, read-only CLI, daemon, package, and update-check diagnostics
 
 The plugin supports the Omarchy 4.0.3+ stock bar. Replacement bars that do not expose its scoped service show unavailable controls rather than attempting access to host internals.
@@ -35,6 +35,8 @@ The plugin ID is now `halmylyseas.mullvad-vpn`. Installations under the earlier 
 - Middle-click: refresh
 
 The panel has Overview, Locations, Advanced, Excluded Apps, and System pages. It is keyboard-accessible. System remains available when the Mullvad CLI or daemon is unavailable and offers only a read-only update check; installation and package or service changes remain separate administrator actions.
+
+On Overview, scroll over the map to zoom, drag to pan, and click a relay marker to select it. The map controls zoom in, zoom out, and reset to the world view. Choosing a favourite or another exit location moves the map to that location with a brief zoom-out, pan, and zoom-in animation. The map stays offline and limits zoom to regional detail.
 
 ## Known limitations
 
@@ -80,4 +82,4 @@ Maintained by [HalmyLyseas](https://github.com/HalmyLyseas), based on [kallupx/o
 
 MIT © 2026 kallupx. Original copyright and license are retained.
 
-The map uses public-domain [Natural Earth](https://www.naturalearthdata.com/) data. Relay locations come from the Mullvad CLI.
+The map uses public-domain [Natural Earth 1:50m land](https://www.naturalearthdata.com/downloads/50m-physical-vectors/) and [country boundaries](https://www.naturalearthdata.com/downloads/50m-cultural-vectors/) bundled with the plugin. Relay locations come from the Mullvad CLI.
