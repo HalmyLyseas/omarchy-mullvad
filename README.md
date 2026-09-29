@@ -14,7 +14,7 @@ Mullvad VPN controls for the Omarchy Quattro bar.
 - Explore eligible Mullvad relay cities on an offline, zoomable world map
 - Inspect bounded, read-only CLI, daemon, package, and update-check diagnostics
 
-The plugin supports the Omarchy 4.0.3+ stock bar. Replacement bars that do not expose its scoped service show unavailable controls rather than attempting access to host internals.
+The plugin targets the Omarchy 4.0.4 stock bar. Replacement bars that do not expose its scoped service show unavailable controls rather than attempting access to host internals.
 
 ## Install
 
@@ -34,9 +34,9 @@ The plugin ID is now `halmylyseas.mullvad-vpn`. Installations under the earlier 
 - Right-click: connect or disconnect
 - Middle-click: refresh
 
-The panel has Main, Advanced, Excluded, and System tabs. It is keyboard-accessible (1–4 select tabs). Main and System remain available when the Mullvad CLI or daemon is unavailable. Account controls on System require a working CLI and daemon; its package and update diagnostics remain read-only.
+The panel has Connection, Advanced, Excluded, and System tabs. It is keyboard-accessible (1–4 select tabs). Connection and System remain available when the Mullvad CLI or daemon is unavailable. Account controls on System require a working CLI and daemon; its package and update diagnostics remain read-only.
 
-On Main, search for an exit city or select an eligible marker on the map. Favourites and recent cities are one-click choices; selecting a city connects or reconnects as needed. The selected relay card lets you save a favourite or choose a specific server. Relay filters are behind the Filters button. The panel grows to fit Main's default content when screen space allows; expanded filters and shorter screens can still scroll. Scroll over the map to zoom, drag to pan, and use its controls to zoom or reset. Choosing a city moves the map there with a brief zoom-out, pan, and zoom-in animation. The map stays offline and limits zoom to regional detail. Connection policy and a compact two-column DNS blocking grid are on Advanced; account login and logout are on System.
+On Connection, search for an exit city or select an eligible marker on the map. Favourites and recent cities are one-click choices; selecting a city connects or reconnects as needed. The selected relay card lets you save a favourite or choose a specific server. Relay filters are behind the Filters button. The panel grows to fit Connection's default content when screen space allows; expanded filters and shorter screens can still scroll. Scroll over the map to zoom, drag to pan, and use its controls to zoom or reset. Choosing a city moves the map there with a brief zoom-out, pan, and zoom-in animation. The map stays offline and limits zoom to regional detail. Connection policy and a compact two-column DNS blocking grid are on Advanced; account login and logout are on System.
 
 ## Known limitations
 

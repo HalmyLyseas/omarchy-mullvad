@@ -22,16 +22,16 @@ function writeExecutable(path, contents) {
     chmodSync(path, 0o755);
 }
 
-test("four-tab navigation keeps Main and System available without the CLI or daemon", () => {
+test("four-tab navigation keeps Connection and System available without the CLI or daemon", () => {
     const panel = readFileSync(join(root, "Panel.qml"), "utf8");
-    assert.match(panel, /model:\s*\["Main", "Advanced", "Excluded", "System"\]/);
+    assert.match(panel, /model:\s*\["Connection", "Advanced", "Excluded", "System"\]/);
     assert.match(panel, /function pageAvailable\(index\)\s*\{\s*return index === 0 \|\| index === 3 \|\| cliReady\s*\}/);
     assert.match(panel, /next = \(next \+ delta \+ 4\) % 4/);
     assert.match(panel, /text === "4"\) showPage\(3\)/);
     assert.match(panel, /root\.pageIndex === 3 \? systemPage/);
 });
 
-test("Main owns location selection while Advanced and System own moved controls", () => {
+test("Connection owns location selection while Advanced and System own moved controls", () => {
     const panel = readFileSync(join(root, "Panel.qml"), "utf8");
     const main = panel.split("id: overviewPage")[1].split("id: advancedPage")[0];
     const advanced = panel.split("id: advancedPage")[1].split("id: excludedPage")[0];

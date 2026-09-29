@@ -22,7 +22,7 @@ Use `bash tests/ci-local --no-cage` only as a live-session fallback when Cage ca
 
 QML service changes require `omarchy restart shell` when testing an installed copy; plugin hot reload does not replace a `keepLoaded` service reliably. Installed testing is separate from source-tree validation and must be explicitly requested.
 
-`tests/ci-local` uses the installed `/usr/share/omarchy/shell` and `omarchy-plugin-validate` by default. For compatibility checks, set `OMARCHY_SHELL_DIR` and `OMARCHY_PLUGIN_VALIDATOR` to an exact Omarchy source checkout.
+`tests/ci-local` uses the installed `/usr/share/omarchy/shell` and `omarchy-plugin-validate` by default. To check against the targeted Omarchy `v4.0.4` source, set `OMARCHY_SHELL_DIR` and `OMARCHY_PLUGIN_VALIDATOR` to that checkout.
 
 ## Publication
 

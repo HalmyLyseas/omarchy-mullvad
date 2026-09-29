@@ -4,7 +4,8 @@
 
 - Ignore large non-tunnel Mullvad listener events without losing later status changes; retain bounded streaming and retry backoff.
 - Replace the static 1:110m map with 1:50m land and borders, wheel zoom, drag panning, and an animated move to selected relay cities.
-- Keep map data bundled and offline, with a larger Overview map and fixed-size relay markers.
+- Keep map data bundled and offline, with a larger Connection map and fixed-size relay markers.
+- Consolidate locations into the Connection tab, compact Advanced DNS controls, and target only Omarchy 4.0.4 in CI.
 - Rename the fork repository to `omarchy-mullvad-vpn`, display it as Mullvad VPN, and use plugin ID `halmylyseas.mullvad-vpn`.
 - Document the manual settings and keybinding switch from the earlier fork and upstream plugin IDs.
 

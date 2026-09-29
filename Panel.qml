@@ -510,7 +510,7 @@ Panel {
           spacing: Style.spacing.xs
 
           Repeater {
-            model: ["Main", "Advanced", "Excluded", "System"]
+            model: ["Connection", "Advanced", "Excluded", "System"]
             Button {
               required property string modelData
               required property int index

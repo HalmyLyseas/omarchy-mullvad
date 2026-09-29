@@ -115,7 +115,7 @@ ShellRoot {
       service.actionStatus = "Updating lockdown…"
       Qt.callLater(function() {
         var label = root.findNamed(feedbackPanel._probePageItem, "overviewActionStatus")
-        if (!label) { root.finish("Overview action feedback is missing"); return }
+        if (!label) { root.finish("Connection action feedback is missing"); return }
         var message = label.text
         service.lastError = service.actionStatus
         root.finish("", { message: message, duplicateHidden: !label.visible,
@@ -182,7 +182,7 @@ ShellRoot {
       panel.showPage(3)
       finish("", {
         cliReady: panel.cliReady,
-        mainAvailable: panel.pageAvailable(0),
+        connectionAvailable: panel.pageAvailable(0),
         advancedAvailable: panel.pageAvailable(1),
         excludedAvailable: panel.pageAvailable(2),
         systemAvailable: panel.pageAvailable(3),

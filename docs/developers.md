@@ -7,15 +7,15 @@
 | `manifest.json` | Declares the `service` and `bar-widget` entry points and keeps the service loaded across widget reloads. |
 | `Service.qml` | Owns shared Mullvad state, polling, the status listener, action queues, read-only System diagnostics, deadlines, output bounds, and excluded-process resolution. |
 | `BarWidget.qml` | Resolves only this plugin's service through the scoped bar facade, renders state, and loads `Panel.qml` while the service exists. |
-| `Panel.qml` | Implements Main (search, favourites, recents, map, relay filters), Advanced (connection policy, DNS, anti-censorship), Excluded, and System (account and diagnostics). Main and System remain available without the CLI or daemon. It receives the service from `BarWidget.qml`; it does not search host registries. |
+| `Panel.qml` | Implements Connection (search, favourites, recents, map, relay filters), Advanced (connection policy, DNS, anti-censorship), Excluded, and System (account and diagnostics). Connection and System remain available without the CLI or daemon. It receives the service from `BarWidget.qml`; it does not search host registries. |
 | `Model.js` | Contains pure parsing, validation, redaction, grouping, bounded diagnostic parsing, desktop-entry search, recent-ID normalization, and fixed argv construction. |
-| `WorldMap.qml` / `NaturalEarthMap.qml` | Render the interactive offline Main map and bundled 1:50m land and country-boundary shapes. |
+| `WorldMap.qml` / `NaturalEarthMap.qml` | Render the interactive offline Connection map and bundled 1:50m land and country-boundary shapes. |
 | `scripts/mullvad-package-info` | Reads bounded metadata for the two allowlisted Mullvad packages from pacman's local database without running a package manager. |
 | `scripts/mullvad-update-check` | Runs only `checkupdates`, filters and bounds Mullvad results, and applies its own TERM/KILL timeout. |
 
 The System page contains account login and logout plus diagnostics. Account actions require a working Mullvad CLI and daemon, and login passes the account number over stdin without saving it. System has no installer, package-update action, privilege escalation, or application-launch path. Package metadata reads are local; the optional automatic/manual update check is the sole network-capable diagnostic.
 
-## Omarchy 4.0.3 facade
+## Omarchy 4.0.4 facade
 
 A third-party `bar-widget` receives a scoped facade. `serviceFor("halmylyseas.mullvad-vpn")` may resolve the plugin service; foreign service IDs must return `null`. The facade's `appLibrary` is `null` because the manifest does not declare `kind: "menu"`. The plugin does not traverse parent objects, private service registries, or replacement-bar internals to escape this boundary.
 
@@ -80,7 +80,7 @@ The gate runs:
 
 The physical-input suite requires `qmltestrunner`, provided on Arch by `qt6-declarative` at `/usr/lib/qt6/bin/qmltestrunner`. The runner first accepts `command -v qmltestrunner`, then checks that explicit Arch path, and fails closed when neither is available.
 
-The probe suites mock all VPN-changing commands, `checkupdates`, process lookup, and excluded-application launch; they must not mutate the live daemon or invoke a real package manager or network update check. CI clones exact Omarchy `v4.0.3` and `v4.0.4` tags and runs the gate once against each tag's `shell/` and `bin/omarchy-plugin-validate`. Local validation defaults to `/usr/share/omarchy/shell` and the installed `omarchy-plugin-validate`; set `OMARCHY_SHELL_DIR` and `OMARCHY_PLUGIN_VALIDATOR` to test other source trees.
+The probe suites mock all VPN-changing commands, `checkupdates`, process lookup, and excluded-application launch; they must not mutate the live daemon or invoke a real package manager or network update check. CI clones exact Omarchy `v4.0.4` and runs the gate against its `shell/` and `bin/omarchy-plugin-validate`. Local validation defaults to `/usr/share/omarchy/shell` and the installed `omarchy-plugin-validate`; set `OMARCHY_SHELL_DIR` and `OMARCHY_PLUGIN_VALIDATOR` to test another source tree.
 
 ## Release discipline
 

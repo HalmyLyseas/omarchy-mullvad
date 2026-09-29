@@ -12,10 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     container: archlinux:latest
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        omarchy: [v4.0.3, v4.0.4]
     env:
       OMARCHY_SHELL_DIR: /tmp/omarchy/shell
       OMARCHY_PLUGIN_VALIDATOR: /tmp/omarchy/bin/omarchy-plugin-validate
@@ -31,12 +27,12 @@ jobs:
 
       - name: Clone exact Omarchy source
         run: |
-          git clone --depth 1 --branch "${{ matrix.omarchy }}" https://github.com/basecamp/omarchy.git /tmp/omarchy
-          test "$(git -C /tmp/omarchy describe --tags --exact-match)" = "${{ matrix.omarchy }}"
+          git clone --depth 1 --branch v4.0.4 https://github.com/basecamp/omarchy.git /tmp/omarchy
+          test "$(git -C /tmp/omarchy describe --tags --exact-match)" = v4.0.4
           test -d "$OMARCHY_SHELL_DIR"
           test -x "$OMARCHY_PLUGIN_VALIDATOR"
 
-      - name: Validate against Omarchy ${{ matrix.omarchy }}
+      - name: Validate against Omarchy v4.0.4
         env:
           WLR_BACKENDS: headless
           WLR_RENDERER: pixman

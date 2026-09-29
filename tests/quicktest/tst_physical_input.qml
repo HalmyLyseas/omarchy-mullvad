@@ -218,7 +218,7 @@ Item {
       return null
     }
 
-    function test_main_default_content_fits_when_screen_has_room() {
+    function test_connection_default_content_fits_when_screen_has_room() {
       var paris = { countryCode: "fr", cityCode: "par", country: "France", city: "Paris",
                     latitude: 48.8566, longitude: 2.3522,
                     servers: [{ hostname: "fr-par-wg-001", provider: "Example", ownership: "owned" }] }
@@ -234,9 +234,9 @@ Item {
       waitForRendering(panel)
       var flick = panel._probePageFlick
       verify(flick !== null)
-      verify(flick.contentHeight < 960, "Main exceeds its expanded content budget")
+      verify(flick.contentHeight < 960, "Connection exceeds its expanded content budget")
       if (panel._probeHostAvailableCardHeight >= flick.contentHeight + 100)
-        verify(!flick.interactive, "Main needs scrolling despite available screen height")
+        verify(!flick.interactive, "Connection needs scrolling despite available screen height")
     }
 
     function test_advanced_dns_uses_compact_two_column_grid() {

@@ -8,10 +8,10 @@ const workflow = readFileSync(join(root, ".github/workflows/test.yml"), "utf8");
 const ciLocal = readFileSync(join(root, "tests/ci-local"), "utf8");
 const uiRunner = readFileSync(join(root, "tests/probe/run-ui"), "utf8");
 
-test("CI validates exact Omarchy 4.0.3 and 4.0.4 tags", () => {
-    assert.match(workflow, /matrix:[\s\S]*omarchy:[^\n]*v4\.0\.3[^\n]*v4\.0\.4/);
-    assert.match(workflow, /git clone --depth 1 --branch "\$\{\{ matrix\.omarchy \}\}" https:\/\/github\.com\/basecamp\/omarchy\.git/);
-    assert.match(workflow, /describe --tags --exact-match/);
+test("CI validates only the exact Omarchy 4.0.4 tag", () => {
+    assert.match(workflow, /git clone --depth 1 --branch v4\.0\.4 https:\/\/github\.com\/basecamp\/omarchy\.git/);
+    assert.match(workflow, /describe --tags --exact-match[^\n]*" = v4\.0\.4/);
+    assert.doesNotMatch(workflow, /v4\.0\.3|matrix:/);
     assert.doesNotMatch(workflow, /pacman -Swdd --noconfirm omarchy/);
 });
 
