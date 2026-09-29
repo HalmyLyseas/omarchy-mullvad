@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "halmylyseas.omarchy-mullvad",
-  "name": "Omarchy Mullvad",
+  "id": "halmylyseas.mullvad-vpn",
+  "name": "Mullvad VPN",
   "version": "1.5.0",
   "author": "HalmyLyseas",
   "license": "MIT",
@@ -16,7 +16,7 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "Omarchy Mullvad",
+    "displayName": "Mullvad VPN",
     "description": "Monitor and control Mullvad from a native Omarchy panel.",
     "category": "Network",
     "allowMultiple": false,

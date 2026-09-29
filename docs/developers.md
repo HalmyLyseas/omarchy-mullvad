@@ -16,7 +16,7 @@ The System page is diagnostic only. It has no installer, package-update action, 
 
 ## Omarchy 4.0.3 facade
 
-A third-party `bar-widget` receives a scoped facade. `serviceFor("halmylyseas.omarchy-mullvad")` may resolve the plugin service; foreign service IDs must return `null`. The facade's `appLibrary` is `null` because the manifest does not declare `kind: "menu"`. The plugin does not traverse parent objects, private service registries, or replacement-bar internals to escape this boundary.
+A third-party `bar-widget` receives a scoped facade. `serviceFor("halmylyseas.mullvad-vpn")` may resolve the plugin service; foreign service IDs must return `null`. The facade's `appLibrary` is `null` because the manifest does not declare `kind: "menu"`. The plugin does not traverse parent objects, private service registries, or replacement-bar internals to escape this boundary.
 
 Excluded-app discovery uses the public Quickshell `DesktopEntries` catalogue. Search scans at most 4,096 entries, caps keyword count at 64, and bounds every searchable field before concatenation. Standard `noDisplay` entries are filtered. Omarchy's private launcher-hide configuration is not available through the scoped facade. Empty search shows resolved recent desktop IDs, while a non-empty query searches the bounded local catalogue. Launch execution remains the fixed argv returned by `Model.argv("launchExcluded", ...)`; safe desktop IDs may contain spaces and parentheses, while path syntax and shell metacharacters remain rejected. The panel persists the recent ID and closes only when the service reports that dispatch succeeded.
 
@@ -38,7 +38,7 @@ The service's six private stdout/stderr arrays are imperative buffers, consumed 
 
 ## Public IPC
 
-The target is `halmylyseas.omarchy-mullvad`. Besides panel navigation, status, tunnel actions, excluded groups, and favourites, it exposes:
+The target is `halmylyseas.mullvad-vpn`. Besides panel navigation, status, tunnel actions, excluded groups, and favourites, it exposes:
 
 - `lockdown("on"|"off")`: dispatches the fixed lockdown setter and returns `ok`. Invalid values return `invalid lockdown mode` without dispatch. As with the existing tunnel IPC methods, `ok` acknowledges the request, not command completion; readiness failures appear in service feedback.
 - `checkUpdates()`: invokes the debounced read-only update check and returns its current status. It does not install updates.

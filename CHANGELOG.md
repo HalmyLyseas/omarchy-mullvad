@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Rename the fork repository and display name to Omarchy Mullvad, with plugin ID `halmylyseas.omarchy-mullvad`.
+- Rename the fork repository to `omarchy-mullvad-vpn`, display it as Mullvad VPN, and use plugin ID `halmylyseas.mullvad-vpn`.
 - Document the manual settings and keybinding switch from the earlier fork and upstream plugin IDs.
 
 ## 1.5.0

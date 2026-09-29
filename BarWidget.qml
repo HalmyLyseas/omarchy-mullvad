@@ -4,7 +4,7 @@ import qs.Ui
 
 BarWidget {
   id: root
-  moduleName: "halmylyseas.omarchy-mullvad"
+  moduleName: "halmylyseas.mullvad-vpn"
 
   readonly property var shell: bar && bar.shell ? bar.shell : null
   readonly property var svc: shell ? shell.serviceFor(moduleName) : null

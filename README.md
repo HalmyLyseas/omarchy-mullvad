@@ -1,6 +1,6 @@
-# Omarchy Mullvad
+# Mullvad VPN
 
-![Omarchy Mullvad preview](preview.gif)
+![Mullvad VPN preview](preview.gif)
 
 Mullvad VPN controls for the Omarchy Quattro bar.
 
@@ -14,19 +14,19 @@ Mullvad VPN controls for the Omarchy Quattro bar.
 - View Mullvad relay cities on a world map
 - Inspect bounded, read-only CLI, daemon, package, and update-check diagnostics
 
-Omarchy Mullvad supports the Omarchy 4.0.3+ stock bar. Replacement bars that do not expose the plugin's scoped service show unavailable controls rather than attempting access to host internals.
+The plugin supports the Omarchy 4.0.3+ stock bar. Replacement bars that do not expose its scoped service show unavailable controls rather than attempting access to host internals.
 
 ## Install
 
 ```bash
-omarchy plugin add https://github.com/HalmyLyseas/omarchy-mullvad.git --enable
+omarchy plugin add https://github.com/HalmyLyseas/omarchy-mullvad-vpn.git --enable
 ```
 
-Omarchy Mullvad targets Mullvad VPN 2026.4. Install and enable Mullvad VPN separately before using the controls.
+This plugin targets Mullvad VPN 2026.4. Install and enable Mullvad VPN separately before using the controls.
 
 ## Upgrading from an earlier identity
 
-The plugin ID is now `halmylyseas.omarchy-mullvad`. Installations under the earlier fork ID `halmylyseas.oma-mullvad` or upstream ID `io.github.kallupx.oma-mullvad` do not migrate automatically. Back up `~/.config/omarchy/shell.json` before switching, preserve the old widget's favourites, recent items and refresh interval, and disable the old widget before enabling this one. Update custom IPC keybindings to the new ID.
+The plugin ID is now `halmylyseas.mullvad-vpn`. Installations under the earlier fork IDs `halmylyseas.omarchy-mullvad` and `halmylyseas.oma-mullvad`, or the upstream ID `io.github.kallupx.oma-mullvad`, do not migrate automatically. Back up `~/.config/omarchy/shell.json` before switching, preserve the old widget's favourites, recent items and refresh interval, and disable the old widget before enabling this one. Update custom IPC keybindings to the new ID.
 
 ## Controls
 
@@ -44,23 +44,23 @@ Do not disable Tailscale netfilter without providing equivalent firewall and tai
 
 ## Hotkeys
 
-Omarchy Mullvad does not add keybindings automatically. Example `~/.config/hypr/bindings.lua` entries:
+The plugin does not add keybindings automatically. Example `~/.config/hypr/bindings.lua` entries:
 
 ```lua
-o.bind("SUPER + SHIFT + V", "Toggle Mullvad", "omarchy-shell halmylyseas.omarchy-mullvad toggleTunnel")
-o.bind("SUPER + ALT + V", "Next Mullvad favourite", "omarchy-shell halmylyseas.omarchy-mullvad nextFavorite")
-o.bind("SUPER + SHIFT + ALT + V", "Omarchy Mullvad panel", "omarchy-shell halmylyseas.omarchy-mullvad toggle")
+o.bind("SUPER + SHIFT + V", "Toggle Mullvad", "omarchy-shell halmylyseas.mullvad-vpn toggleTunnel")
+o.bind("SUPER + ALT + V", "Next Mullvad favourite", "omarchy-shell halmylyseas.mullvad-vpn nextFavorite")
+o.bind("SUPER + SHIFT + ALT + V", "Mullvad VPN panel", "omarchy-shell halmylyseas.mullvad-vpn toggle")
 ```
 
 ## Uninstall
 
 ```bash
-omarchy plugin remove halmylyseas.omarchy-mullvad
+omarchy plugin remove halmylyseas.mullvad-vpn
 ```
 
 ## Privacy
 
-Account numbers are sent to `mullvad account login` over standard input and are never stored. Omarchy Mullvad stores only favourite locations, recent locations, and recent excluded desktop IDs. Mullvad remains responsible for VPN settings.
+Account numbers are sent to `mullvad account login` over standard input and are never stored. This plugin stores only favourite locations, recent locations, and recent excluded desktop IDs. Mullvad remains responsible for VPN settings.
 
 ## Verify
 

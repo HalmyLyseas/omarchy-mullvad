@@ -12,7 +12,7 @@ new Function("module", "exports", modelSource)(moduleShim, moduleShim.exports);
 const Model = moduleShim.exports;
 
 function temporaryDirectory() {
-    const directory = mkdtempSync(join(tmpdir(), "omarchy-mullvad-system-"));
+    const directory = mkdtempSync(join(tmpdir(), "omarchy-mullvad-vpn-system-"));
     test.after(() => rmSync(directory, { recursive: true, force: true }));
     return directory;
 }
