@@ -143,9 +143,17 @@ check_json "$json" "retained output stays bounded" readChars le 262144
 check_orphans flood
 
 json="$(run_case listener-flood listener-flood listener-flood)"
-check_json "$json" "listener rejects an unterminated over-limit line" listenerOverflows ge 1
+check_json "$json" "listener rejects an unterminated over-limit line without rapid restarts" listenerOverflows eq 1
 check_json "$json" "listener overflow is surfaced" lastError contains 'output limit exceeded'
 check_orphans listener-flood
+
+json="$(run_case listener-ignored-flood listener-ignored-flood listener-flood)"
+check_json "$json" "ignored listener events still have a bounded length" listenerOverflows eq 1
+check_orphans listener-ignored-flood
+
+json="$(run_case listener-large-nontunnel listener-large-nontunnel listener-large-nontunnel)"
+check_json "$json" "large relay-list event is ignored while the next tunnel state applies" note empty ignored finalState eq connected listenerOverflows eq 0
+check_orphans listener-large-nontunnel
 
 json="$(run_case action action-hang action-hang)"
 check_json "$json" "action watchdog fires once" actionWatchdogs eq 1

@@ -33,6 +33,20 @@ if [[ "$mode" == listener-flood && "$*" == "status --json listen" ]]; then
   while true; do printf '%s' "$chunk"; done
 fi
 
+if [[ "$mode" == listener-large-nontunnel && "$*" == "status --json listen" ]]; then
+  cat "$fixtures/status-json.txt"
+  printf '{"locations":"'
+  head -c 650000 /dev/zero | tr '\0' x
+  printf '"}\n{"state":"connected","details":{}}\n'
+  exec sleep 600
+fi
+
+if [[ "$mode" == listener-ignored-flood && "$*" == "status --json listen" ]]; then
+  printf '{"locations":"'
+  head -c 4300000 /dev/zero | tr '\0' x
+  exec sleep 600
+fi
+
 if [[ "$mode" == action-hang && "$*" == "account logout" ]]; then exec sleep 600; fi
 if [[ "$mode" == partial-batch && "$*" == "split-tunnel delete 1234" ]]; then
   echo "mock partial batch failure" >&2

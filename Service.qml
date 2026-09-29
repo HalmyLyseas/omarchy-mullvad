@@ -11,6 +11,7 @@ Item {
   readonly property int finiteOutputLines: 4096
   readonly property int finiteOutputChars: 262144
   readonly property int listenerLineChars: 8192
+  readonly property int ignoredListenerLineChars: 4194304
   property int readTimeoutMs: 10000
   property int actionTimeoutMs: 20000
   property int updateCheckTimeoutMs: 130000
@@ -481,8 +482,7 @@ Item {
   }
 
   function _ensureListener() {
-    if (!installed || !daemonRunning || listenerProcess.running) return
-    listenerRestart.stop()
+    if (!installed || !daemonRunning || listenerProcess.running || listenerRestart.running) return
     listenerProcess.running = true
   }
 
@@ -743,7 +743,7 @@ Item {
     id: listenerRestart
     interval: 5000
     repeat: false
-    onTriggered: root._ensureListener()
+    onTriggered: { stop(); root._ensureListener() }
   }
 
   Timer {
@@ -844,9 +844,13 @@ Item {
     running: false
     property string outputRemainder: ""
     property string errorRemainder: ""
+    property bool skipOutputLine: false
+    property int skippedOutputChars: 0
     onStarted: {
       outputRemainder = ""
       errorRemainder = ""
+      skipOutputLine = false
+      skippedOutputChars = 0
       root._listenerOverflowed = false
     }
     stdout: SplitParser {
@@ -868,24 +872,48 @@ Item {
   function _appendListenerChunk(chunk, errorStream) {
     if (_listenerOverflowed) return
     var key = errorStream ? "errorRemainder" : "outputRemainder"
-    var value = String(listenerProcess[key] || "") + String(chunk || "")
-    var newline = value.indexOf("\n")
-    while (newline >= 0) {
-      var line = value.slice(0, newline)
-      if (line.slice(-1) === "\r") line = line.slice(0, -1)
-      if (line.length > listenerLineChars) {
-        _overflowListener()
-        return
+    var data = String(chunk || "")
+    var offset = 0
+    while (offset < data.length) {
+      var newline = data.indexOf("\n", offset)
+      var complete = newline >= 0
+      var end = complete ? newline : data.length
+      var part = data.slice(offset, end)
+      if (!errorStream && listenerProcess.skipOutputLine) {
+        listenerProcess.skippedOutputChars += part.length
+        if (listenerProcess.skippedOutputChars > ignoredListenerLineChars) {
+          _overflowListener()
+          return
+        }
+      } else {
+        var value = String(listenerProcess[key] || "") + part
+        if (value.length > listenerLineChars) {
+          var firstKey = value.slice(0, 128).match(/^\s*\{\s*"([^"\\]{1,64})"\s*:/)
+          if (errorStream || !firstKey || ["state", "type", "status", "tunnel_state", "value"].indexOf(firstKey[1]) !== -1) {
+            _overflowListener()
+            return
+          }
+          listenerProcess.skipOutputLine = true
+          listenerProcess.skippedOutputChars = value.length
+          listenerProcess.outputRemainder = ""
+          if (listenerProcess.skippedOutputChars > ignoredListenerLineChars) {
+            _overflowListener()
+            return
+          }
+        } else if (complete) {
+          if (value.slice(-1) === "\r") value = value.slice(0, -1)
+          _applyListenerLine(value, errorStream)
+        } else listenerProcess[key] = value
       }
-      _applyListenerLine(line, errorStream)
-      value = value.slice(newline + 1)
-      newline = value.indexOf("\n")
+      if (complete) {
+        listenerProcess[key] = ""
+        if (!errorStream) {
+          listenerProcess.skipOutputLine = false
+          listenerProcess.skippedOutputChars = 0
+        }
+      }
+      offset = end + 1
     }
-    if (value.length > listenerLineChars) {
-      _overflowListener()
-      return
-    }
-    listenerProcess[key] = value
   }
 
   function _overflowListener() {
@@ -907,6 +935,7 @@ Item {
       if (!Model.isTunnelStateEvent(line)) return
       _applyStatus(line, _statusSeq + 1)
       _statusSeq++
+      if (lastError === "Mullvad status listener output limit exceeded") lastError = ""
     } catch (e) {
       lastError = _shortError(e, "Could not parse live Mullvad status")
     }

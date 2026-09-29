@@ -101,6 +101,9 @@ ShellRoot {
         } else if (root.scenario === "listener-flood") {
           root.elapsed = 0
           listenerDrain.start()
+        } else if (root.scenario === "listener-large-nontunnel") {
+          root.elapsed = 0
+          largeListenerDrain.start()
         } else if (root.scenario === "state-sequence" || root.scenario === "listener-malformed") {
           sequenceWait.start()
         } else if (root.scenario === "status-race") {
@@ -150,10 +153,23 @@ ShellRoot {
     repeat: true
     onTriggered: {
       root.elapsed += interval
-      if (root.service._listenerOverflowCount > 0) {
+      if (root.service._listenerOverflowCount > 0 && root.elapsed >= 1000) {
         stop()
         root.finish("")
       } else if (root.elapsed > 5000) root.finish("listener output limit did not fire")
+    }
+  }
+
+  Timer {
+    id: largeListenerDrain
+    interval: 50
+    repeat: true
+    onTriggered: {
+      root.elapsed += interval
+      if (root.service.state === "connected") {
+        stop()
+        root.finish(root.service._listenerOverflowCount === 0 ? "" : "large relay event overflowed")
+      } else if (root.elapsed > 5000) root.finish("tunnel state after relay event was not applied")
     }
   }
 
@@ -301,6 +317,9 @@ ShellRoot {
       return "malformed line swallowed the same-chunk disconnect"
     if (service._statusSeq !== seq + 1 || service._statusApplySeq !== seq + 1)
       return "invalid or non-tunnel lines consumed status sequence numbers"
+    service.lastError = "Mullvad status listener output limit exceeded"
+    service._applyListenerLine('{"state":"disconnected","details":{}}', false)
+    if (service.lastError !== "") return "successful listener recovery kept the stale overflow warning"
     return ""
   }
 
